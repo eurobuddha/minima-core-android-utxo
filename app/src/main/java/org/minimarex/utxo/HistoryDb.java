@@ -29,6 +29,8 @@ public class HistoryDb extends SQLiteOpenHelper {
         super(ctx, DB_NAME, null, DB_VERSION);
     }
 
+    /** Fresh install: create the full v2 schema. internalid is the app-side key; txnid holds the
+     *  on-chain txpowid once resolved. inputs/outputs are JSON arrays so the breakdown can be rebuilt. */
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE + " (" +
@@ -48,6 +50,8 @@ public class HistoryDb extends SQLiteOpenHelper {
                 "burn TEXT)");
     }
 
+    /** Non-destructive migration: ensure the table exists, then ALTER in the v2 columns. Each ALTER
+     *  is wrapped so a "column already exists" error on a partially-migrated db is ignored. */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldV, int newV) {
         // Preserve history; add new columns. Never drop the table.
@@ -57,6 +61,7 @@ public class HistoryDb extends SQLiteOpenHelper {
         }
     }
 
+    /** Insert (or replace on internalid conflict) a history row — used for new pending postings. */
     public void insertPosting(HistoryRow r) {
         ContentValues v = new ContentValues();
         v.put("internalid", r.internalid);
@@ -75,6 +80,7 @@ public class HistoryDb extends SQLiteOpenHelper {
         getWritableDatabase().insertWithOnConflict(TABLE, null, v, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
+    /** Patch status (and optionally txnid/note) of an existing row keyed by internalid. */
     public void update(String internalid, String status, String txnid, String note) {
         ContentValues v = new ContentValues();
         v.put("status", status);
@@ -83,10 +89,12 @@ public class HistoryDb extends SQLiteOpenHelper {
         getWritableDatabase().update(TABLE, v, "internalid=?", new String[]{internalid});
     }
 
+    /** Remove a row (e.g. user dismisses a failed send). */
     public void delete(String internalid) {
         getWritableDatabase().delete(TABLE, "internalid=?", new String[]{internalid});
     }
 
+    /** Return the most recent rows (newest id first), capped at limit. */
     public List<HistoryRow> list(int limit) {
         List<HistoryRow> out = new ArrayList<>();
         Cursor c = getReadableDatabase().rawQuery(

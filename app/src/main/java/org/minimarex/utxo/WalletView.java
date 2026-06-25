@@ -36,6 +36,7 @@ public class WalletView extends BaseView {
     private final WalletTools tools;
     private final Set<String> collapsed = new HashSet<>();   // address hexes collapsed by the user
 
+    /** Wires up the selection bar, Tools dropdown, and renders the first address listing. */
     public WalletView(MainActivity a) {
         super(a, R.layout.view_wallet);
         container = find(R.id.walletContainer);
@@ -55,6 +56,7 @@ public class WalletView extends BaseView {
         refresh();
     }
 
+    /** Paints the view with the active theme (so Dark/Light toggle takes effect). */
     private void applyDesign() {
         android.view.ViewGroup rootVg = (android.view.ViewGroup) root;
         rootVg.setBackgroundColor(Design.bg());
@@ -67,12 +69,14 @@ public class WalletView extends BaseView {
         clearBtn.setTextColor(Design.accent());
     }
 
+    /** Shows a one-line status message under the selection bar; green on ok, red on failure. */
     private void setStatus(String msg, boolean ok) {
         statusView.setVisibility(View.VISIBLE);
         statusView.setText(msg);
         statusView.setTextColor(ok ? Design.success() : Design.red());
     }
 
+    /** The "Tools ▾" dropdown: Split / Consolidate / Distribute / Untrack on the current selection. */
     private void showToolsMenu(View anchor) {
         PopupMenu menu = new PopupMenu(act, anchor);
         menu.getMenu().add(0, 1, 0, "Split selected…");
@@ -91,6 +95,7 @@ public class WalletView extends BaseView {
         menu.show();
     }
 
+    /** Rebuilds the selection summary and the full address-grouped coin listing. */
     @Override
     public void refresh() {
         List<Coin> sel = act.selectedCoins();
@@ -165,6 +170,7 @@ public class WalletView extends BaseView {
         }
     }
 
+    /** Builds one collapsible address card header: caret + short address + coin count + COPY. */
     private View buildHeader(String hex, String mini, int count, boolean isCollapsed) {
         LinearLayout header = new LinearLayout(act);
         header.setOrientation(LinearLayout.HORIZONTAL);
@@ -209,6 +215,7 @@ public class WalletView extends BaseView {
         return header;
     }
 
+    /** Builds one UTXO row: checkbox (only if confirmed+sendable), amount, copyable coinid, status. */
     private View buildCoinRow(LayoutInflater inf, Coin c) {
         View row = inf.inflate(R.layout.view_coin_row, container, false);
         CheckBox cb = row.findViewById(R.id.coinCheck);
@@ -235,6 +242,7 @@ public class WalletView extends BaseView {
         return row;
     }
 
+    /** Copies text to the clipboard and toasts confirmation; no-op on empty. */
     private void copyToClipboard(String label, String text) {
         if (text == null || text.isEmpty()) return;
         ClipboardManager cm = (ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE);
@@ -242,6 +250,7 @@ public class WalletView extends BaseView {
         Toast.makeText(act, label + " copied", Toast.LENGTH_SHORT).show();
     }
 
+    /** Adds a centered dim placeholder note (e.g. the "no addresses yet" message). */
     private void addNote(String text) {
         TextView tv = new TextView(act);
         tv.setText(text);
@@ -251,6 +260,7 @@ public class WalletView extends BaseView {
         container.addView(tv);
     }
 
+    /** Converts density-independent pixels to raw pixels for this device. */
     private int dp(int v) {
         return (int) (v * act.getResources().getDisplayMetrics().density);
     }

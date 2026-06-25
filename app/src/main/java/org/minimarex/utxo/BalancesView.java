@@ -15,6 +15,7 @@ public class BalancesView extends BaseView {
 
     private final LinearLayout container;
 
+    /** Inflates the balances container and renders the first listing. */
     public BalancesView(MainActivity a) {
         super(a, R.layout.view_balances);
         container = find(R.id.balancesContainer);
@@ -22,6 +23,7 @@ public class BalancesView extends BaseView {
         refresh();
     }
 
+    /** Rebuilds one rich card per token from the aggregated balances. */
     @Override
     public void refresh() {
         container.removeAllViews();
@@ -41,6 +43,8 @@ public class BalancesView extends BaseView {
             View card = inf.inflate(R.layout.view_balance_row, container, false);
             card.setBackgroundColor(Design.surface());
 
+            // Icon: the app launcher icon for native Minima, otherwise the token's own iconUrl
+            // (async, with a placeholder while loading / on failure).
             ImageView icon = card.findViewById(R.id.balIcon);
             if (Util.isMinima(b.tokenid)) {
                 icon.setImageResource(R.mipmap.ic_launcher);
@@ -51,6 +55,7 @@ public class BalancesView extends BaseView {
             TextView name = card.findViewById(R.id.balName);
             name.setText(b.name); name.setTextColor(Design.accent());
 
+            // Ticker is optional metadata — hide the field entirely when the token has none.
             TextView ticker = card.findViewById(R.id.balTicker);
             ticker.setTextColor(Design.dim());
             if (b.meta.ticker != null && !b.meta.ticker.isEmpty()) {
@@ -62,11 +67,13 @@ public class BalancesView extends BaseView {
             TextView total = card.findViewById(R.id.balTotal);
             total.setText("Total " + Util.tidyAmount(b.total)); total.setTextColor(Design.text());
 
+            // Breakdown: always show sendable; append the locked (unconfirmed) part only when nonzero.
             String breakdown = "Sendable " + Util.tidyAmount(b.sendable);
             if (positive(b.unconfirmed)) breakdown += "  ·  Locked " + Util.tidyAmount(b.unconfirmed);
             TextView bd = card.findViewById(R.id.balBreakdown);
             bd.setText(breakdown); bd.setTextColor(Design.dim());
 
+            // Meta line: UTXO count for this token, plus its declared decimals when known.
             String meta = b.coins + (b.coins == 1 ? " coin" : " coins");
             if (b.meta.decimals != null && !b.meta.decimals.isEmpty()) meta += "  ·  " + b.meta.decimals + " decimals";
             TextView mt = card.findViewById(R.id.balMeta);
@@ -75,6 +82,7 @@ public class BalancesView extends BaseView {
             TextView tid = card.findViewById(R.id.balTokenId);
             tid.setText(b.tokenid); tid.setTextColor(Design.dim());
 
+            // Description is optional free-text metadata — only revealed when present.
             TextView desc = card.findViewById(R.id.balDesc);
             desc.setTextColor(Design.dim());
             if (b.meta.description != null && !b.meta.description.isEmpty()) {
@@ -86,10 +94,12 @@ public class BalancesView extends BaseView {
         }
     }
 
+    /** True if the amount string parses to a strictly positive number; false on null/garbage. */
     private boolean positive(String amt) {
         try { return new BigDecimal(amt).signum() > 0; } catch (Exception e) { return false; }
     }
 
+    /** Converts density-independent pixels to raw pixels for this device. */
     private int dp(int v) {
         return (int) (v * act.getResources().getDisplayMetrics().density);
     }

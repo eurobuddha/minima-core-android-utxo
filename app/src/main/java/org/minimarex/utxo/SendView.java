@@ -34,6 +34,7 @@ public class SendView extends BaseView {
     private boolean settingChange = false;     // guard for programmatic change-field writes
     private boolean changeFetching = false;
 
+    /** Binds the form fields, wires Max/Next/Preview, and tracks manual edits to the change field. */
     public SendView(MainActivity a) {
         super(a, R.layout.view_send);
         fromList = find(R.id.sendFromList);
@@ -52,6 +53,7 @@ public class SendView extends BaseView {
         ((TextView) find(R.id.nextBtn)).setOnClickListener(v -> fetchChange(true));
         previewBtn.setOnClickListener(v -> onPreview());
 
+        // Mark the change field "touched" once the user types, so we stop auto-prefilling it.
         changeInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
@@ -61,6 +63,7 @@ public class SendView extends BaseView {
         refresh();
     }
 
+    /** Paints the view and all input fields with the active theme. */
     private void applyDesign() {
         root.setBackgroundColor(Design.bg());
         fromList.setBackgroundColor(Design.surface());
@@ -72,6 +75,7 @@ public class SendView extends BaseView {
         previewBtn.setTextColor(Design.onAccent());
     }
 
+    /** Rebuilds the FROM (selected-input) list and total, gates burn to Minima, and prefills change. */
     @Override
     public void refresh() {
         List<Coin> sel = act.selectedCoins();
@@ -91,6 +95,7 @@ public class SendView extends BaseView {
         String tokenName = sel.get(0).tokenName;
         boolean minima = Util.isMinima(act.selectedTokenid());
 
+        // FROM list: one row per selected input coin, accumulating the spendable total as we go.
         BigDecimal total = BigDecimal.ZERO;
         for (Coin c : sel) {
             try { total = total.add(new BigDecimal(c.amount)); } catch (Exception ignored) {}
@@ -99,6 +104,7 @@ public class SendView extends BaseView {
         View totalRow = row("Total in", Util.tidyAmount(total.toPlainString()) + " " + tokenName, true);
         fromList.addView(totalRow);
 
+        // Burn is paid in Minima, so it's only offered when sending the Minima token.
         burnInput.setEnabled(minima);
         if (!minima) {
             burnInput.setText("");
@@ -112,23 +118,30 @@ public class SendView extends BaseView {
 
     // ----- field helpers -----
 
+    /** Fills the amount with the full spendable total; for Minima sends the burn is reserved first. */
     private void onMax() {
         List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) return;
         BigDecimal total = sum(sel);
         BigDecimal burn = parseBurn();
+        // Minima: max = total − burn (burn is spent from the same coins); other tokens: whole total.
         BigDecimal max = Util.isMinima(act.selectedTokenid()) ? total.subtract(burn) : total;
         if (max.signum() < 0) max = BigDecimal.ZERO;
         amountInput.setText(Util.tidyAmount(max.toPlainString()));
     }
 
+    /** Auto-fills the change address once, unless the user has edited it or a fetch is in flight. */
     private void prefillChangeIfNeeded() {
         if (changeTouched || changeFetching) return;
         if (!changeInput.getText().toString().trim().isEmpty()) return;
         fetchChange(false);
     }
 
-    /** Rotate: fetch the node's next default address into the change field. */
+    /**
+     * Rotate: fetch the node's next default address into the change field.
+     * userInitiated true = the NEXT button (a deliberate rotation, so it counts as "touched");
+     * false = the silent prefill (stays a default, so prefill can still re-run later).
+     */
     private void fetchChange(boolean userInitiated) {
         if (act.selectedCoins().isEmpty()) return;
         changeFetching = true;
@@ -150,6 +163,7 @@ public class SendView extends BaseView {
 
     // ----- preview / validate -----
 
+    /** Validates every field, computes change, then asks the node to confirm the recipient before Confirm. */
     private void onPreview() {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) { status("Select coins in the Wallet tab first.", false); return; }
@@ -179,6 +193,7 @@ public class SendView extends BaseView {
         if (dec >= 0 && Util.decimalPlaces(amount) > dec) { setNote(amountNote, "This token supports at most " + dec + " decimals.", R.color.ux_error); return; }
         amountNote.setVisibility(View.GONE);
 
+        // Change = inputs − amount − burn; only require/validate a change address when there's any left.
         final BigDecimal change = total.subtract(amount).subtract(burn);
         final boolean hasChange = change.signum() > 0;
         final String changeStr = hasChange ? change.stripTrailingZeros().toPlainString() : null;
@@ -217,6 +232,7 @@ public class SendView extends BaseView {
 
     // ----- confirm breakdown -----
 
+    /** The Confirm step: a read-only Inputs / Outputs / Change / Burn breakdown before signing. */
     private void showConfirm(final List<Coin> sel, final String recipient, final String amountStr,
                              final String changeAddr, final String changeStr, final String burnStr,
                              final String tokenid, final String tokenName, BigDecimal total) {
@@ -233,6 +249,8 @@ public class SendView extends BaseView {
         body.addView(row("→ " + Util.shorten(recipient) + (isMine(recipient) ? "  (yours)" : ""),
                 Util.tidyAmount(amountStr) + " " + tokenName, false));
         if (changeStr != null) {
+            // Flag a change address we don't recognise as ours with "(verify)" — guards against typos
+            // in a hand-edited change field sending the remainder to a stranger.
             body.addView(row("↩ " + Util.shorten(changeAddr) + (isMine(changeAddr) ? "  (yours)" : "  (verify)"),
                     Util.tidyAmount(changeStr) + " " + tokenName, false));
         }
@@ -259,17 +277,21 @@ public class SendView extends BaseView {
                 .show();
     }
 
+    /** Records a History row, builds/signs/posts the txn, then updates that row by outcome. */
     private void buildSend(List<Coin> sel, final String recipient, final String amountStr,
                            String changeAddr, String changeStr, String burnStr,
                            final String tokenid, final String tokenName) {
         previewBtn.setEnabled(false);
         status("Recording audit row…", true);
 
+        // Outputs = recipient, plus the change output when there's any change to return.
         List<TxnBuilder.Out> outs = new ArrayList<>();
         outs.add(new TxnBuilder.Out(recipient, amountStr));
         if (changeStr != null && changeAddr != null && !changeAddr.isEmpty()) {
             outs.add(new TxnBuilder.Out(changeAddr, changeStr));
         }
+        // Persist the inputs/outputs to History up-front (status PENDING) so the send is auditable
+        // even if signing/posting fails; internalid links this row to the outcome callbacks below.
         final String internalid = TxnUtil.recordPosting(act, recipient, amountStr, tokenid, tokenName,
                 sel, outs, (changeStr != null ? changeAddr : null), burnStr);
 
@@ -300,6 +322,7 @@ public class SendView extends BaseView {
 
     // ----- small helpers -----
 
+    /** Builds a monospaced left-label / right-value row; bold marks a total/heading. */
     private View row(String left, String right, boolean bold) {
         LinearLayout r = new LinearLayout(act);
         r.setOrientation(LinearLayout.HORIZONTAL);
@@ -322,6 +345,7 @@ public class SendView extends BaseView {
         return r;
     }
 
+    /** Builds a small dim, letter-spaced section heading (INPUTS / OUTPUTS) for the Confirm dialog. */
     private TextView sectionLabel(String text) {
         TextView t = new TextView(act);
         t.setText(text);
@@ -332,34 +356,40 @@ public class SendView extends BaseView {
         return t;
     }
 
+    /** True if the address (hex or miniaddress form) belongs to this wallet. */
     private boolean isMine(String addr) {
         for (String[] a : act.myAddresses()) if (addr.equals(a[0]) || addr.equals(a[1])) return true;
         return false;
     }
 
+    /** Sums coin amounts, skipping any that fail to parse. */
     private BigDecimal sum(List<Coin> coins) {
         BigDecimal t = BigDecimal.ZERO;
         for (Coin c : coins) { try { t = t.add(new BigDecimal(c.amount)); } catch (Exception ignored) {} }
         return t;
     }
 
+    /** Parses the burn field: empty = 0; unparseable = -1 (a sentinel callers reject as invalid). */
     private BigDecimal parseBurn() {
         String s = burnInput.getText().toString().trim();
         if (s.isEmpty()) return BigDecimal.ZERO;
         try { return new BigDecimal(s); } catch (Exception e) { return new BigDecimal("-1"); }
     }
 
+    /** Shows an inline validation note under a field in the given color. */
     private void setNote(TextView note, String msg, int colorRes) {
         note.setVisibility(View.VISIBLE);
         note.setText(msg);
         note.setTextColor(act.getColor(colorRes));
     }
 
+    /** Shows the bottom status line; green on ok, red on failure. */
     private void status(String msg, boolean ok) {
         statusView.setVisibility(View.VISIBLE);
         statusView.setText(msg);
         statusView.setTextColor(ok ? Design.success() : Design.red());
     }
 
+    /** Converts density-independent pixels to raw pixels for this device. */
     private int dp(int v) { return (int) (v * act.getResources().getDisplayMetrics().density); }
 }

@@ -22,6 +22,7 @@ public class ReceiveView extends BaseView {
     private final TextView address;
     private final ImageView qr;
 
+    /** Wires Copy/Refresh buttons, themes the view, and renders any cached address. */
     public ReceiveView(MainActivity a) {
         super(a, R.layout.view_receive);
         address = find(R.id.rcvAddress);
@@ -40,6 +41,7 @@ public class ReceiveView extends BaseView {
         refresh();
     }
 
+    /** Repaints from the cached default address; never hits the node (onShown does the fetch). */
     @Override
     public void refresh() {
         String addr = act.defaultAddress();
@@ -59,6 +61,7 @@ public class ReceiveView extends BaseView {
         if (addr == null || addr.isEmpty()) fetchFresh();
     }
 
+    /** Asks the node for a fresh getaddress, caches it, then updates the label and QR. */
     private void fetchFresh() {
         act.node().cmd("getaddress", new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
@@ -78,8 +81,9 @@ public class ReceiveView extends BaseView {
         });
     }
 
+    /** Encodes the address to a QR bitmap off the UI thread; tag guards against stale results. */
     private void renderQr(final String text) {
-        qr.setTag(text);
+        qr.setTag(text);   // remembers which address this bitmap is for
         new Thread(() -> {
             Bitmap bmp = null;
             try {
@@ -96,11 +100,13 @@ public class ReceiveView extends BaseView {
             }
             final Bitmap result = bmp;
             act.runOnUiThread(() -> {
+                // Only apply if the address hasn't changed since this encode started.
                 if (text.equals(qr.getTag())) qr.setImageBitmap(result);
             });
         }).start();
     }
 
+    /** Copies the cached default address to the clipboard and toasts confirmation. */
     private void copyAddress() {
         String addr = act.defaultAddress();
         if (addr == null || addr.isEmpty()) return;

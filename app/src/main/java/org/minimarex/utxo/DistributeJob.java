@@ -33,6 +33,7 @@ public class DistributeJob {
     public int retryCount = 0;             // failed attempts at the current batch
     public String currentInternalId = "";  // history row of the in-flight/last batch
 
+    /** Serialize the whole job state for persistence. */
     public JSONObject toJson() {
         JSONObject o = new JSONObject();
         try {
@@ -53,6 +54,7 @@ public class DistributeJob {
         return o;
     }
 
+    /** Rebuild a job from its persisted JSON (with safe defaults for missing keys). */
     public static DistributeJob fromJson(JSONObject o) {
         DistributeJob j = new DistributeJob();
         j.tokenid = o.optString("tokenid", "0x00");
@@ -72,11 +74,13 @@ public class DistributeJob {
         return j;
     }
 
+    /** Persist this job to SharedPreferences (survives an app restart mid-distribution). */
     public void save(Context ctx) {
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         p.edit().putString(KEY, toJson().toString()).apply();
     }
 
+    /** Load a persisted job, or null if none/corrupt. */
     public static DistributeJob load(Context ctx) {
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String s = p.getString(KEY, "");
@@ -84,6 +88,7 @@ public class DistributeJob {
         try { return fromJson(new JSONObject(s)); } catch (Exception e) { return null; }
     }
 
+    /** Drop the persisted job (on completion or abort). */
     public static void clear(Context ctx) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY).apply();
     }

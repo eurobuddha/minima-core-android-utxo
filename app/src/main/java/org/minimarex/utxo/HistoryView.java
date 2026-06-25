@@ -75,6 +75,7 @@ public class HistoryView extends BaseView {
 
     @Override public void onNewBlock() { if (visible()) fetch(false); }
 
+    /** True only when the History tab is the one on screen — gates all node fetching. */
     private boolean visible() { return act.currentTab() == MainActivity.TAB_HISTORY; }
 
     /** Refresh the head of history (page 0) — picks up new txns and confirms in-flight sends.
@@ -91,6 +92,7 @@ public class HistoryView extends BaseView {
         fetchPage(nodeEntries.size());
     }
 
+    /** Issue one bounded `history` call at the given offset and merge/render the result. */
     private void fetchPage(final int offset) {
         fetching = true;
         act.node().cmd("history relevant:true max:" + FETCH_PAGE + " offset:" + offset, new NodeApi.Cb() {
@@ -168,6 +170,7 @@ public class HistoryView extends BaseView {
         }
     }
 
+    /** Find the on-chain txpowid that spent one of this local row's input coins, or null. */
     private String matchLocal(HistoryRow r, Map<String, String> inputCoinToTxpow) {
         JSONArray ins = parseArr(r.inputs);
         if (ins == null) return null;
@@ -181,6 +184,8 @@ public class HistoryView extends BaseView {
 
     // ----- render -----
 
+    /** Rebuild the card list: merge local in-flight/failed/old-confirmed rows with on-chain entries,
+     *  dedupe a confirmed local send against its node entry, sort, and lay out (plus "Load older"). */
     private void render() {
         container.removeAllViews();
 
@@ -242,8 +247,10 @@ public class HistoryView extends BaseView {
         }
     }
 
+    /** Sort key: in-flight (pending/failed) rows rank above on-chain ones. */
     private int rank(Entry e) { return "pending".equals(e.direction) || "failed".equals(e.direction) ? 0 : 1; }
 
+    /** Build one history card: header (badge·date·status), net-amount summary, lazy Details toggle. */
     private View buildCard(final Entry e) {
         LinearLayout card = new LinearLayout(act);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -311,6 +318,7 @@ public class HistoryView extends BaseView {
 
         toggle.setOnClickListener(v -> {
             boolean nowOpen = details.getVisibility() != View.VISIBLE;
+            // Build the breakdown only on first expand (cheap collapsed rows by default).
             if (nowOpen && details.getChildCount() == 0) buildDetails(details, e);
             details.setVisibility(nowOpen ? View.VISIBLE : View.GONE);
             toggle.setText(nowOpen ? "Details ▴" : "Details ▾");
@@ -319,6 +327,8 @@ public class HistoryView extends BaseView {
         return card;
     }
 
+    /** Populate the expanded breakdown: FROM/TO addresses, change/burn, block, tx hash + explorer link,
+     *  and (for failed local rows) Re-post / Dismiss actions. */
     private void buildDetails(LinearLayout d, final Entry e) {
         // FROM
         if (e.inputs != null && e.inputs.length() > 0) {
@@ -457,6 +467,7 @@ public class HistoryView extends BaseView {
         return e;
     }
 
+    /** Build a display Entry from a local store row (kind = pending / failed / confirmed). */
     private Entry localEntry(HistoryRow r, String kind) {
         Entry e = new Entry();
         e.localRow = r;
@@ -485,11 +496,13 @@ public class HistoryView extends BaseView {
 
     // ----- Re-post (failed local rows) -----
 
+    /** Re-post is only possible if we stored the input coins to rebuild the transaction from. */
     private boolean canRepost(HistoryRow r) {
         JSONArray ins = parseArr(r.inputs);
         return ins != null && ins.length() > 0;
     }
 
+    /** Rebuild a failed send from its stored inputs/outputs and re-broadcast it via TxnBuilder. */
     private void repost(final HistoryRow r) {
         JSONArray insArr = parseArr(r.inputs);
         if (insArr == null || insArr.length() == 0) { toast("Can't re-post — inputs not stored."); return; }
@@ -554,6 +567,7 @@ public class HistoryView extends BaseView {
 
     // ----- small builders (shared look) -----
 
+    /** A row showing a truncated address, optional tappable-to-copy amount, and a COPY chip. */
     private View addressLine(String addr, String amountRaw) {
         LinearLayout row = new LinearLayout(act);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -581,6 +595,7 @@ public class HistoryView extends BaseView {
         return row;
     }
 
+    /** A single monospace text row. */
     private View plainRow(String text) {
         TextView t = new TextView(act);
         t.setText(text);
@@ -591,6 +606,7 @@ public class HistoryView extends BaseView {
         return t;
     }
 
+    /** A dim italic note row (e.g. "appears once confirmed"). */
     private View italic(String text) {
         TextView t = new TextView(act);
         t.setText(text);
@@ -601,6 +617,7 @@ public class HistoryView extends BaseView {
         return t;
     }
 
+    /** A section label (e.g. FROM / TO / BLOCK) with optional dim/accent trailing tags. */
     private LinearLayout kvLabel(String label, String dimTag, String accentTag) {
         LinearLayout r = new LinearLayout(act);
         r.setOrientation(LinearLayout.HORIZONTAL);
@@ -618,6 +635,7 @@ public class HistoryView extends BaseView {
         return r;
     }
 
+    /** A small "· text" inline tag. */
     private TextView tag(String text, int color) {
         TextView v = new TextView(act);
         v.setText("  · " + text);
@@ -627,6 +645,7 @@ public class HistoryView extends BaseView {
         return v;
     }
 
+    /** A colored uppercase status/direction pill. */
     private TextView pill(String text, int color) {
         TextView t = new TextView(act);
         t.setText(text);
@@ -637,6 +656,7 @@ public class HistoryView extends BaseView {
         return t;
     }
 
+    /** An outlined COPY chip that copies the given text and flashes "COPIED". */
     private TextView copyChip(final String text) {
         final TextView c = new TextView(act);
         c.setText("COPY");
@@ -656,6 +676,7 @@ public class HistoryView extends BaseView {
         return c;
     }
 
+    /** An outlined tappable action button (Re-post / Dismiss). */
     private TextView actionChip(String text, int color, View.OnClickListener onClick) {
         TextView b = new TextView(act);
         b.setText(text);
@@ -677,6 +698,7 @@ public class HistoryView extends BaseView {
 
     // ----- helpers -----
 
+    /** Direction → header badge text. */
     private String dirBadge(String dir) {
         switch (dir) {
             case "in":      return "↓ In";
@@ -688,6 +710,7 @@ public class HistoryView extends BaseView {
         }
     }
 
+    /** Direction → accent color for the net amount. */
     private int dirColor(String dir) {
         switch (dir) {
             case "in":      return Design.success();
@@ -699,30 +722,35 @@ public class HistoryView extends BaseView {
         }
     }
 
+    /** Status pill text for an entry. */
     private String statusLabel(Entry e) {
         if ("pending".equals(e.direction)) return "PENDING";
         if ("failed".equals(e.direction)) return "FAILED";
         return "CONFIRMED";
     }
 
+    /** Status pill color for an entry. */
     private int statusColor(Entry e) {
         if ("pending".equals(e.direction)) return Design.amber();
         if ("failed".equals(e.direction)) return Design.red();
         return Design.success();
     }
 
+    /** Flatten the wallet's own addresses (both address forms) into a lookup set. */
     private Set<String> myAddressSet() {
         Set<String> s = new HashSet<>();
         for (String[] a : act.myAddresses()) { if (a[0] != null) s.add(a[0]); if (a[1] != null) s.add(a[1]); }
         return s;
     }
 
+    /** Is this address one of the wallet's own (either address form)? */
     private boolean isMine(String addr) {
         if (addr == null) return false;
         for (String[] a : act.myAddresses()) if (addr.equals(a[0]) || addr.equals(a[1])) return true;
         return false;
     }
 
+    /** Does any coin in the array belong to the wallet? (used to detect "out" vs "in"). */
     private boolean anyMine(JSONArray coins, Set<String> mine) {
         if (coins == null) return false;
         for (int i = 0; i < coins.length(); i++) {
@@ -733,16 +761,19 @@ public class HistoryView extends BaseView {
         return false;
     }
 
+    /** Prefer the readable miniaddress, fall back to the raw address. */
     private String addrOf(JSONObject coin) {
         String mini = coin.optString("miniaddress", "");
         return !mini.isEmpty() ? mini : coin.optString("address", "");
     }
 
+    /** Address of the first coin (the sender, for "in" rows), or "—". */
     private String firstAddr(JSONArray coins) {
         if (coins != null && coins.length() > 0) { JSONObject o = coins.optJSONObject(0); if (o != null) return addrOf(o); }
         return "—";
     }
 
+    /** Display label for a token: "MINIMA", else its name from a matching coin, else a truncated id. */
     private String tokenLabel(String tokenid, JSONArray inputs, JSONArray outputs) {
         if (Util.isMinima(tokenid)) return "MINIMA";
         // Pull the token's name from a matching coin if present.
@@ -759,14 +790,17 @@ public class HistoryView extends BaseView {
         return truncMid(tokenid, 6, 4);
     }
 
+    /** Accumulate amount per tokenid into the map. */
     private void add(Map<String, BigDecimal> m, String tok, BigDecimal amt) {
         m.put(tok, m.containsKey(tok) ? m.get(tok).add(amt) : amt);
     }
 
+    /** Map lookup defaulting to zero. */
     private BigDecimal bd(Map<String, BigDecimal> m, String tok) {
         return m.containsKey(tok) ? m.get(tok) : BigDecimal.ZERO;
     }
 
+    /** Choose the token to headline a multi-token row: Minima if present, else the largest amount. */
     private String pickToken(Map<String, BigDecimal> m) {
         if (m.containsKey("0x00")) return "0x00";
         String best = "0x00"; BigDecimal max = BigDecimal.valueOf(-1);
@@ -774,19 +808,23 @@ public class HistoryView extends BaseView {
         return best;
     }
 
+    /** True if any token amount is > 0 (distinguishes an "out" from a "self" move). */
     private boolean anyPositive(Map<String, BigDecimal> m) {
         for (BigDecimal v : m.values()) if (v.signum() > 0) return true;
         return false;
     }
 
+    /** Parse to BigDecimal, zero on failure. */
     private BigDecimal dec(String s) { try { return new BigDecimal(s); } catch (Exception e) { return BigDecimal.ZERO; } }
 
+    /** Middle-ellipsize a long string, keeping h head + t tail chars. */
     private String truncMid(String s, int h, int t) {
         s = s == null ? "" : s;
         if (s.length() <= h + t + 1) return s;
         return s.substring(0, h) + "…" + s.substring(s.length() - t);
     }
 
+    /** Format an amount for display: cap at 8 dp (append "…" if truncated) and group thousands. */
     private String compactAmount(String raw) {
         try {
             BigDecimal b = new BigDecimal(raw);
@@ -802,15 +840,18 @@ public class HistoryView extends BaseView {
         }
     }
 
+    /** Parse a stored JSON array string, null on empty/invalid. */
     private JSONArray parseArr(String json) {
         if (json == null || json.isEmpty()) return null;
         try { return new JSONArray(json); } catch (Exception e) { return null; }
     }
 
+    /** True if the amount string parses to a positive number. */
     private boolean isPositive(String amt) {
         try { return new BigDecimal(amt).signum() > 0; } catch (Exception e) { return false; }
     }
 
+    /** Copy text to the clipboard and toast the label. */
     private void copy(String text, String label) {
         if (text == null || text.isEmpty()) return;
         ClipboardManager cm = (ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE);
@@ -818,7 +859,9 @@ public class HistoryView extends BaseView {
         Toast.makeText(act, label, Toast.LENGTH_SHORT).show();
     }
 
+    /** Short toast helper. */
     private void toast(String msg) { Toast.makeText(act, msg, Toast.LENGTH_SHORT).show(); }
 
+    /** Convert dp to device pixels. */
     private int dp(int v) { return (int) (v * act.getResources().getDisplayMetrics().density); }
 }

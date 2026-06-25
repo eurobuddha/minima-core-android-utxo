@@ -34,6 +34,7 @@ public class DistributeManager {
         job = DistributeJob.load(a);    // resume a job left over from a previous run
     }
 
+    /** True while a job exists (running or waiting between batches). */
     public boolean isActive() {
         return job != null;
     }
@@ -50,10 +51,12 @@ public class DistributeManager {
         return true;
     }
 
+    /** Release a reservation that never became a job (e.g. address fetch failed). */
     public void cancelReserve() {
         starting = false;
     }
 
+    /** One-line progress string for the Tools tab, or null when idle. */
     public String statusLine() {
         if (job == null) return null;
         String s = "Distribute running · " + job.batchesDone + " batch(es) done · "
@@ -65,6 +68,8 @@ public class DistributeManager {
 
     // ===== start a new job =====
 
+    /** Begin a new job: validate funds, build the job state, then post the first batch from the
+     *  user's selected coins. Later batches chain off each batch's change coin (see onCoinsUpdated). */
     public void start(List<Coin> inputs, List<String> addrs, String per, String tokenid, String tokenName) {
         starting = false;   // committing the reservation (if any) into a real job
         if (job != null) { toast("A distribute job is already running."); return; }
@@ -86,6 +91,8 @@ public class DistributeManager {
 
     // ===== heartbeat: advance the chain on each coin refresh =====
 
+    /** Heartbeat from every coin refresh: when the previous batch's change coin has confirmed,
+     *  chain the next batch onto it; bail out if it never shows within EXPIRY_BLOCKS. */
     public void onCoinsUpdated() {
         if (job == null || inFlight || !job.waiting) return;
 
@@ -98,6 +105,7 @@ public class DistributeManager {
         Coin change = findChangeCoin();
         if (change == null) return;   // not confirmed yet — keep waiting
 
+        // Change coin confirmed: feed it as the sole input of the next batch.
         job.waiting = false;
         List<Coin> inputs = Collections.singletonList(change);
         doNextBatch(inputs, new BigDecimal(change.amount));
@@ -105,6 +113,8 @@ public class DistributeManager {
 
     // ===== core: build + post one batch =====
 
+    /** Build one batch: up to 14 recipients plus a change output for the remainder, fetching a fresh
+     *  change address first when there's a remainder to return. */
     private void doNextBatch(final List<Coin> inputs, final BigDecimal inputTotal) {
         final int n = Math.min(BATCH, job.remaining.size());
         final List<String> recipients = new ArrayList<>(job.remaining.subList(0, n));
@@ -134,6 +144,8 @@ public class DistributeManager {
         }
     }
 
+    /** Post the batch transaction; on success advance the job, capture the change coinid to chain on,
+     *  and either arm the wait for the next batch or complete. */
     private void postBatch(List<Coin> inputs, final List<String> recipients, final int n,
                            final String changeStr, final String changeAddr) {
         List<TxnBuilder.Out> outs = new ArrayList<>();
@@ -164,12 +176,14 @@ public class DistributeManager {
                 job.atBlock = act.chainBlock();
                 inFlight = false;
 
+                // More batches only if addresses remain, we're under the cap, AND there's a change coin
+                // to fund them — without change there's nothing to chain onto.
                 boolean more = !job.remaining.isEmpty()
                         && job.batchesDone < job.maxBatches
                         && hasChange;
                 if (more) {
-                    job.waiting = true;
-                    job.save(act);
+                    job.waiting = true;   // onCoinsUpdated picks up once the change coin confirms
+                    job.save(act);        // persist so a restart resumes mid-distribution
                 } else {
                     complete();
                 }
@@ -190,6 +204,8 @@ public class DistributeManager {
 
     // ===== finding the change coin to chain on =====
 
+    /** Locate the confirmed, sendable change coin from the last batch — by exact coinid if captured,
+     *  else by address+amount — so the next batch can spend it. Null until it confirms on-chain. */
     private Coin findChangeCoin() {
         for (Coin c : act.coins()) {
             if (!c.sendable || !c.confirmed) continue;
@@ -208,6 +224,7 @@ public class DistributeManager {
 
     // ===== terminal states =====
 
+    /** All batches done: clear persisted state and refresh the UI. */
     private void complete() {
         inFlight = false;
         DistributeJob.clear(act);
@@ -216,6 +233,7 @@ public class DistributeManager {
         act.refreshTools();
     }
 
+    /** Give up: mark the current row errored, clear the job, and report how many addresses went unfunded. */
     private void abort(String why) {
         int left = job != null ? job.remaining.size() : 0;
         if (job != null && !job.currentInternalId.isEmpty()) {
@@ -263,6 +281,7 @@ public class DistributeManager {
 
     // ===== helpers =====
 
+    /** Total a coin list (skipping unparseable amounts). */
     private BigDecimal sum(List<Coin> coins) {
         BigDecimal t = BigDecimal.ZERO;
         for (Coin c : coins) {
@@ -271,11 +290,13 @@ public class DistributeManager {
         return t;
     }
 
+    /** Numeric amount equality (falls back to string compare if either isn't a valid number). */
     private boolean amountsEqual(String a, String b) {
         try { return new BigDecimal(a).compareTo(new BigDecimal(b)) == 0; }
         catch (Exception e) { return a != null && a.equals(b); }
     }
 
+    /** Short toast helper. */
     private void toast(String msg) {
         Toast.makeText(act, msg, Toast.LENGTH_SHORT).show();
     }

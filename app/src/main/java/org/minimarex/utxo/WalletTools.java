@@ -20,6 +20,7 @@ import java.util.List;
  */
 public class WalletTools {
 
+    /** Callback for surfacing a one-line status message to the user (ok = success vs. error styling). */
     public interface Status {
         void show(String message, boolean ok);
     }
@@ -36,6 +37,7 @@ public class WalletTools {
 
     // ---- shared helpers ----
 
+    /** Build a numeric EditText (decimal toggles the decimal-point flag) for the dialog forms. */
     private EditText input(String hint, String preset, boolean decimal) {
         EditText e = new EditText(act);
         e.setHint(hint);
@@ -46,6 +48,7 @@ public class WalletTools {
         return e;
     }
 
+    /** Wrap dialog children in a padded vertical layout. */
     private LinearLayout box(View... children) {
         LinearLayout l = new LinearLayout(act);
         l.setOrientation(LinearLayout.VERTICAL);
@@ -55,6 +58,7 @@ public class WalletTools {
         return l;
     }
 
+    /** Total the amounts of a coin list (bad amounts are skipped). */
     private BigDecimal sum(List<Coin> coins) {
         BigDecimal t = BigDecimal.ZERO;
         for (Coin c : coins) {
@@ -63,6 +67,7 @@ public class WalletTools {
         return t;
     }
 
+    /** Resolve a human token name from balances/coins, falling back to "Minima"/"Token". */
     private String tokenNameFor(String tokenid) {
         if (Util.isMinima(tokenid)) return "Minima";
         for (TokenBalance b : act.balances()) if (b.tokenid.equals(tokenid)) return b.name;
@@ -70,6 +75,7 @@ public class WalletTools {
         return "Token";
     }
 
+    /** Post a custom transaction via {@link TxnBuilder} and reflect the outcome on the history row. */
     private void runBuilder(List<Coin> inputs, List<TxnBuilder.Out> outs, String tokenid,
                             String internalid, String okLabel) {
         status.show("Posting…", true);
@@ -92,6 +98,7 @@ public class WalletTools {
 
     // ---- Split ----
 
+    /** Prompt for a coin count, then split the selected coins into that many equal coins. */
     public void showSplit() {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Split.", false); return; }
@@ -104,6 +111,7 @@ public class WalletTools {
                 .show();
     }
 
+    /** Validate the count, compute equal slices, fetch one address per coin, then post the split. */
     private void doSplit(List<Coin> sel, String cStr) {
         int n;
         try { n = Integer.parseInt(cStr.trim()); } catch (Exception e) { status.show("Enter a valid number.", false); return; }
@@ -115,6 +123,7 @@ public class WalletTools {
         BigDecimal total = sum(sel);
         BigDecimal each = total.divide(new BigDecimal(n), scale, RoundingMode.DOWN);
         if (each.signum() <= 0) { status.show("Amount too small to split into " + n + ".", false); return; }
+        // Rounding goes DOWN, so the last coin absorbs the remainder to keep inputs == outputs (no burn).
         final BigDecimal last = total.subtract(each.multiply(new BigDecimal(n - 1)));
         final BigDecimal eachF = each;
         final int fn = n;
@@ -140,6 +149,7 @@ public class WalletTools {
     // No selection: run the node's auto-consolidate on Minima (0x00).
     // 2+ coins selected: merge exactly those coins into one.
 
+    /** Entry point: no selection ⇒ node auto-consolidate Minima; 2+ selected ⇒ merge exactly those. */
     public void showConsolidate() {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) {
@@ -164,6 +174,7 @@ public class WalletTools {
                 .show();
     }
 
+    /** Run the node's native "consolidate" command (it picks its own inputs). */
     private void autoConsolidate(String tokenid) {
         final String internalid = TxnUtil.recordPosting(act, "Consolidate " + tokenNameFor(tokenid),
                 "—", tokenid, tokenNameFor(tokenid));
@@ -209,6 +220,7 @@ public class WalletTools {
 
     // ---- Distribute ----
 
+    /** Prompt for address count + per-address amount, then kick off the multi-batch DistributeManager. */
     public void showDistribute() {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Distribute.", false); return; }
@@ -226,6 +238,7 @@ public class WalletTools {
                 .show();
     }
 
+    /** Validate count/amount/decimals/funds, reserve the job slot, fetch addresses, then start. */
     private void doDistribute(final List<Coin> sel, String cStr, String aStr) {
         int n;
         try { n = Integer.parseInt(cStr.trim()); } catch (Exception e) { status.show("Enter a valid number.", false); return; }
@@ -252,6 +265,7 @@ public class WalletTools {
         final String perStr = per.stripTrailingZeros().toPlainString();
         final String tokenName = sel.get(0).tokenName;
 
+        // Reserve before the async address fetch so a second tap can't start a parallel job.
         if (!act.distribute().reserve()) { status.show("A distribute job is already running.", false); return; }
         status.show("Fetching " + n + " addresses…", true);
         TxnUtil.fetchAddresses(act, n, new TxnUtil.AddrList() {
@@ -268,6 +282,7 @@ public class WalletTools {
 
     // ---- Untrack ----
 
+    /** Confirm, then stop tracking the selected coins (they stay on-chain, just hidden locally). */
     public void untrackSelected() {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Untrack.", false); return; }
@@ -279,6 +294,8 @@ public class WalletTools {
                 .show();
     }
 
+    // Untrack one coin at a time, recursing on success — the node has no batch cointrack call.
+    /** Sequentially `cointrack enable:false` each selected coin, recursing through the list. */
     private void untrackNext(final List<Coin> sel, final int i) {
         if (i >= sel.size()) {
             status.show("Untracked " + sel.size() + " coin(s).", true);
