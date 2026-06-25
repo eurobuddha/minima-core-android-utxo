@@ -3,6 +3,8 @@ package org.minimarex.utxo;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,7 +16,10 @@ import android.widget.Toast;
 
 import androidx.appcompat.widget.PopupMenu;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -134,9 +139,33 @@ public class WalletView extends BaseView {
         for (Coin c : act.coins()) if (!miniOf.containsKey(c.address)) miniOf.put(c.address, c.miniaddress);
         for (String[] a : act.myAddresses()) if (!miniOf.containsKey(a[0])) miniOf.put(a[0], a[1]);
 
-        // Order: addresses WITH coins first (in coin order), then empty wallet addresses below.
+        // Our own addresses (the wallet's default scripts). Anything with coins that ISN'T one of these
+        // is a contract address — funds locked in a script (casino, vesting, …), not a wallet of ours.
+        Set<String> ownHex = new HashSet<>();
+        for (String[] a : act.myAddresses()) ownHex.add(a[0]);
+
+        // Total Minima (0x00) held per address — used to sort funded addresses by value, like the original.
+        Map<String, BigDecimal> minimaTotal = new HashMap<>();
+        for (Map.Entry<String, List<Coin>> en : byAddr.entrySet()) {
+            BigDecimal t = BigDecimal.ZERO;
+            for (Coin c : en.getValue()) {
+                if (Util.isMinima(c.tokenid)) { try { t = t.add(new BigDecimal(c.amount)); } catch (Exception ignored) {} }
+            }
+            minimaTotal.put(en.getKey(), t);
+        }
+
+        // Split the funded addresses into ours vs contracts, each sorted by Minima desc.
+        List<String> ownCoined = new ArrayList<>(), contractCoined = new ArrayList<>();
+        for (String hex : byAddr.keySet()) (ownHex.contains(hex) ? ownCoined : contractCoined).add(hex);
+        Comparator<String> byMinimaDesc = (x, y) ->
+                minimaTotal.getOrDefault(y, BigDecimal.ZERO).compareTo(minimaTotal.getOrDefault(x, BigDecimal.ZERO));
+        Collections.sort(ownCoined, byMinimaDesc);
+        Collections.sort(contractCoined, byMinimaDesc);
+
+        // Order (money first): our funded addresses, THEN contracts, THEN our empty/unused addresses.
         LinkedHashMap<String, String> order = new LinkedHashMap<>(); // hex -> mini
-        for (String hex : byAddr.keySet()) order.put(hex, miniOf.get(hex));
+        for (String hex : ownCoined) order.put(hex, miniOf.get(hex));
+        for (String hex : contractCoined) order.put(hex, miniOf.get(hex));
         for (String[] a : act.myAddresses()) if (!order.containsKey(a[0])) order.put(a[0], a[1]);
 
         if (order.isEmpty()) {
@@ -152,7 +181,7 @@ public class WalletView extends BaseView {
             int count = addrCoins == null ? 0 : addrCoins.size();
             boolean isCollapsed = collapsed.contains(hex);
 
-            container.addView(buildHeader(hex, mini, count, isCollapsed));
+            container.addView(buildHeader(hex, mini, count, isCollapsed, !ownHex.contains(hex)));
 
             if (isCollapsed) continue;
 
@@ -170,12 +199,24 @@ public class WalletView extends BaseView {
         }
     }
 
-    /** Builds one collapsible address card header: caret + short address + coin count + COPY. */
-    private View buildHeader(String hex, String mini, int count, boolean isCollapsed) {
+    /** Builds one collapsible address card header: caret + short address + (contract badge) + coin count
+     *  + COPY. Contract addresses (funds locked in a script, not ours) get an accent badge + accent strip
+     *  so they're never mistaken for one of our own wallet addresses. */
+    private View buildHeader(String hex, String mini, int count, boolean isCollapsed, boolean isContract) {
         LinearLayout header = new LinearLayout(act);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(0, dp(14), 0, dp(4));
+
+        // Thin accent strip down the left of a contract row (mirrors the original's amber left border).
+        if (isContract) {
+            View strip = new View(act);
+            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(dp(3), dp(16));
+            slp.rightMargin = dp(6);
+            strip.setLayoutParams(slp);
+            strip.setBackgroundColor(Design.accent());
+            header.addView(strip);
+        }
 
         TextView caret = new TextView(act);
         caret.setText(isCollapsed ? "▸ " : "▾ ");
@@ -185,10 +226,30 @@ public class WalletView extends BaseView {
 
         TextView addr = new TextView(act);
         addr.setText(Util.shorten(mini));
-        addr.setTextColor(Design.text());
+        addr.setTextColor(isContract ? Design.accent() : Design.text());
         addr.setTextSize(13f);
         addr.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         header.addView(addr);
+
+        // "CONTRACT" pill — the explicit label that this address isn't one of our wallets.
+        if (isContract) {
+            TextView badge = new TextView(act);
+            badge.setText("CONTRACT");
+            badge.setTextSize(9f);
+            badge.setTypeface(Typeface.DEFAULT_BOLD);
+            badge.setTextColor(Design.accent());
+            badge.setPadding(dp(6), dp(1), dp(6), dp(1));
+            GradientDrawable bd = new GradientDrawable();
+            bd.setColor((Design.accent() & 0x00FFFFFF) | 0x22000000);   // faint accent fill
+            bd.setCornerRadius(dp(4));
+            bd.setStroke(dp(1), Design.accent());
+            badge.setBackground(bd);
+            LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            blp.rightMargin = dp(8);
+            badge.setLayoutParams(blp);
+            header.addView(badge);
+        }
 
         TextView cnt = new TextView(act);
         cnt.setText(count == 0 ? "0 coins" : (count + (count == 1 ? " coin" : " coins")));
