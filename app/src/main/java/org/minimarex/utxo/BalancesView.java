@@ -77,10 +77,14 @@ public class BalancesView extends BaseView {
             TextView bd = card.findViewById(R.id.balBreakdown);
             bd.setText(breakdown); bd.setTextColor(Design.dim());
 
-            // Small print: UTXO count, declared decimals, and the token's total SUPPLY (demoted from headline).
+            // Small print: UTXO count, declared decimals, and the SUPPLY (demoted from headline). For Minima
+            // use the LIVE circulating amount (status.minima = 1bn − burnt) as a whole number, no decimals;
+            // for tokens, their fixed total supply.
             String meta = b.coins + (b.coins == 1 ? " coin" : " coins");
             if (b.meta.decimals != null && !b.meta.decimals.isEmpty()) meta += "  ·  " + b.meta.decimals + " decimals";
-            meta += "  ·  Supply " + Util.tidyAmount(b.total);
+            String supply = (Util.isMinima(b.tokenid) && !act.circulatingSupply().isEmpty())
+                    ? wholeNumber(act.circulatingSupply()) : Util.tidyAmount(b.total);
+            meta += "  ·  Supply " + supply;
             TextView mt = card.findViewById(R.id.balMeta);
             mt.setText(meta); mt.setTextColor(Design.dim());
 
@@ -102,6 +106,14 @@ public class BalancesView extends BaseView {
     /** True if the amount string parses to a strictly positive number; false on null/garbage. */
     private boolean positive(String amt) {
         try { return new BigDecimal(amt).signum() > 0; } catch (Exception e) { return false; }
+    }
+
+    /** Whole-number format with thousands separators and no decimals (e.g. 999,978,181). */
+    private static String wholeNumber(String amt) {
+        try {
+            java.math.BigInteger bi = new BigDecimal(amt).toBigInteger();
+            return java.text.NumberFormat.getInstance(java.util.Locale.US).format(bi);
+        } catch (Exception e) { return amt; }
     }
 
     /** Contract-locked / watch-only balance = max(0, confirmed − sendable); "0" on parse failure. */

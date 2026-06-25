@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private int chainBlock = 0;
     private int lastScriptsBlock = -1;                 // throttle the ~27 KB scripts fetch
     private static final int SCRIPTS_EVERY = 20;       // blocks between scripts refreshes
+    private String circulatingSupply = "";             // status.minima — live total Minima (1bn − burnt)
 
     // ----- selection state (single tokenid at a time) -----
     private final LinkedHashSet<String> selectedCoinIds = new LinkedHashSet<>();
@@ -262,6 +263,19 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onError(String message) { handleErr(message); }
         });
 
+        // status carries the live circulating supply (status.minima = 1bn − burnt) shown on the Minima
+        // balance card. Small summary response; refresh Balances once it lands.
+        node.cmd("status", new NodeApi.Cb() {
+            @Override public void onResult(JSONObject json) {
+                JSONObject r = json.optJSONObject("response");
+                if (r != null) {
+                    String m = r.optString("minima", "");
+                    if (!m.isEmpty()) { circulatingSupply = m; views[TAB_BALANCES].refresh(); }
+                }
+            }
+            @Override public void onError(String message) {}
+        });
+
         // getaddress (~0.5 KB) is only needed for the Receive tab — fetched there on demand, not every
         // reload. scripts (~27 KB) lists the wallet's addresses, which barely change — fetched rarely.
         maybeRefreshScripts();
@@ -382,6 +396,8 @@ public class MainActivity extends AppCompatActivity {
     public List<Coin> coins() { return coins; }
     public List<TokenBalance> balances() { return balances; }
     public List<String[]> myAddresses() { return myAddresses; }
+    /** Live circulating Minima supply (status.minima = 1bn − burnt), or "" until status has loaded. */
+    public String circulatingSupply() { return circulatingSupply; }
     public String defaultAddress() { return defaultMiniAddress; }
     public boolean isSelected(String coinid) { return selectedCoinIds.contains(coinid); }
     public String selectedTokenid() { return selectedTokenid; }
