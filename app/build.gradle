@@ -1,0 +1,48 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'org.minimarex.utxo'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "org.minimarex.utxo"
+        minSdk 28
+        targetSdk 35
+        versionCode 301
+        versionName "0.3.1"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Sign release with the debug keystore, matching the minima-core-android node app.
+            // IPC is authorized by the MINIMA_ID token, not by signature, so this is sufficient
+            // for sideloading. Swap to a dedicated release keystore if uploading to Play.
+            signingConfig signingConfigs.debug
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+
+    implementation libs.appcompat
+    implementation libs.material
+    implementation libs.activity
+    implementation libs.constraintlayout
+
+    // Tabbed wallet UI
+    implementation 'androidx.viewpager:viewpager:1.0.0'
+    // QR code generation for the Receive screen
+    implementation 'com.google.zxing:core:3.5.3'
+
+    implementation files('libs/minimaapi.aar')
+}
