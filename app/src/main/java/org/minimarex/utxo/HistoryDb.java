@@ -22,7 +22,7 @@ public class HistoryDb extends SQLiteOpenHelper {
     public static final String STATUS_ERROR     = "error";
 
     private static final String DB_NAME = "utxo_history.db";
-    private static final int    DB_VERSION = 3;     // v3: + nodetx (persisted on-chain history)
+    private static final int    DB_VERSION = 4;     // v4: nodetx full schema (mirror of the History app)
     private static final String TABLE = "history";
 
     public HistoryDb(Context ctx) {
@@ -51,16 +51,18 @@ public class HistoryDb extends SQLiteOpenHelper {
         // Persisted on-chain history (from the node's `history`), keyed by txpowid — accumulates + survives
         // restarts, like the standalone Minima History app.
         db.execSQL("CREATE TABLE IF NOT EXISTS nodetx (" +
-                "txpowid TEXT PRIMARY KEY, block INTEGER, time INTEGER," +
-                "direction TEXT, net TEXT, token TEXT, counterparty TEXT," +
-                "inputs TEXT, outputs TEXT, multimore INTEGER)");
+                "txpowid TEXT PRIMARY KEY, block INTEGER, timemilli INTEGER," +
+                "direction TEXT, incoming INTEGER, tokenid TEXT, tokenname TEXT, amount TEXT," +
+                "deltas TEXT, counterparty TEXT, inputs TEXT, outputs TEXT)");
     }
 
     /** Non-destructive migration: ensure the table exists, then ALTER in the v2 columns. Each ALTER
      *  is wrapped so a "column already exists" error on a partially-migrated db is ignored. */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldV, int newV) {
-        // Preserve history; add new columns. Never drop the table.
+        // nodetx is a re-fetchable cache of on-chain history — recreate it if its schema changed.
+        if (oldV < 4) db.execSQL("DROP TABLE IF EXISTS nodetx");
+        // Preserve the local send-records (history) table; (re)create tables; add the v2 send columns.
         onCreate(db);
         for (String col : new String[]{"inputs TEXT", "outputs TEXT", "changeaddr TEXT", "burn TEXT"}) {
             try { db.execSQL("ALTER TABLE " + TABLE + " ADD COLUMN " + col); } catch (Exception ignored) {}
@@ -137,10 +139,11 @@ public class HistoryDb extends SQLiteOpenHelper {
     /** Insert a node history row; returns true if NEW (false if this txpowid was already stored). */
     public boolean upsertNodeTx(NodeTx n) {
         ContentValues v = new ContentValues();
-        v.put("txpowid", n.txpowid); v.put("block", n.block); v.put("time", n.time);
-        v.put("direction", n.direction); v.put("net", n.net); v.put("token", n.token);
-        v.put("counterparty", n.counterparty); v.put("inputs", n.inputs); v.put("outputs", n.outputs);
-        v.put("multimore", n.multiMore);
+        v.put("txpowid", n.txpowid); v.put("block", n.block); v.put("timemilli", n.timemilli);
+        v.put("direction", n.direction); v.put("incoming", n.incoming ? 1 : 0);
+        v.put("tokenid", n.tokenid); v.put("tokenname", n.tokenName); v.put("amount", n.amount);
+        v.put("deltas", n.deltas); v.put("counterparty", n.counterparty);
+        v.put("inputs", n.inputs); v.put("outputs", n.outputs);
         long rid = getWritableDatabase().insertWithOnConflict("nodetx", null, v, SQLiteDatabase.CONFLICT_IGNORE);
         return rid != -1;
     }
@@ -149,15 +152,16 @@ public class HistoryDb extends SQLiteOpenHelper {
     public List<NodeTx> loadNodeTx(int limit) {
         List<NodeTx> out = new ArrayList<>();
         Cursor c = getReadableDatabase().rawQuery(
-                "SELECT txpowid,block,time,direction,net,token,counterparty,inputs,outputs,multimore FROM nodetx " +
-                        "ORDER BY block DESC, time DESC LIMIT " + limit, null);
+                "SELECT txpowid,block,timemilli,direction,incoming,tokenid,tokenname,amount,deltas,counterparty,inputs,outputs FROM nodetx " +
+                        "ORDER BY block DESC, timemilli DESC LIMIT " + limit, null);
         try {
             while (c.moveToNext()) {
                 NodeTx n = new NodeTx();
-                n.txpowid = c.getString(0); n.block = c.getInt(1); n.time = c.getLong(2);
-                n.direction = c.getString(3); n.net = c.getString(4); n.token = c.getString(5);
-                n.counterparty = c.getString(6); n.inputs = c.getString(7); n.outputs = c.getString(8);
-                n.multiMore = c.getInt(9);
+                n.txpowid = c.getString(0); n.block = c.getLong(1); n.timemilli = c.getLong(2);
+                n.direction = c.getString(3); n.incoming = c.getInt(4) == 1;
+                n.tokenid = c.getString(5); n.tokenName = c.getString(6); n.amount = c.getString(7);
+                n.deltas = c.getString(8); n.counterparty = c.getString(9);
+                n.inputs = c.getString(10); n.outputs = c.getString(11);
                 out.add(n);
             }
         } finally { c.close(); }
