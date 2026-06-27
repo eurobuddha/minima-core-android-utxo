@@ -22,7 +22,7 @@ public class HistoryDb extends SQLiteOpenHelper {
     public static final String STATUS_ERROR     = "error";
 
     private static final String DB_NAME = "utxo_history.db";
-    private static final int    DB_VERSION = 2;     // v2: inputs/outputs/changeaddr/burn columns
+    private static final int    DB_VERSION = 3;     // v3: + nodetx (persisted on-chain history)
     private static final String TABLE = "history";
 
     public HistoryDb(Context ctx) {
@@ -48,6 +48,12 @@ public class HistoryDb extends SQLiteOpenHelper {
                 "outputs TEXT," +       // JSON array [{address,amount}]
                 "changeaddr TEXT," +
                 "burn TEXT)");
+        // Persisted on-chain history (from the node's `history`), keyed by txpowid — accumulates + survives
+        // restarts, like the standalone Minima History app.
+        db.execSQL("CREATE TABLE IF NOT EXISTS nodetx (" +
+                "txpowid TEXT PRIMARY KEY, block INTEGER, time INTEGER," +
+                "direction TEXT, net TEXT, token TEXT, counterparty TEXT," +
+                "inputs TEXT, outputs TEXT, multimore INTEGER)");
     }
 
     /** Non-destructive migration: ensure the table exists, then ALTER in the v2 columns. Each ALTER
@@ -124,5 +130,42 @@ public class HistoryDb extends SQLiteOpenHelper {
             c.close();
         }
         return out;
+    }
+
+    // ----- persisted on-chain history (nodetx) -----
+
+    /** Insert a node history row; returns true if NEW (false if this txpowid was already stored). */
+    public boolean upsertNodeTx(NodeTx n) {
+        ContentValues v = new ContentValues();
+        v.put("txpowid", n.txpowid); v.put("block", n.block); v.put("time", n.time);
+        v.put("direction", n.direction); v.put("net", n.net); v.put("token", n.token);
+        v.put("counterparty", n.counterparty); v.put("inputs", n.inputs); v.put("outputs", n.outputs);
+        v.put("multimore", n.multiMore);
+        long rid = getWritableDatabase().insertWithOnConflict("nodetx", null, v, SQLiteDatabase.CONFLICT_IGNORE);
+        return rid != -1;
+    }
+
+    /** Newest-first persisted on-chain history, capped at limit. */
+    public List<NodeTx> loadNodeTx(int limit) {
+        List<NodeTx> out = new ArrayList<>();
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT txpowid,block,time,direction,net,token,counterparty,inputs,outputs,multimore FROM nodetx " +
+                        "ORDER BY block DESC, time DESC LIMIT " + limit, null);
+        try {
+            while (c.moveToNext()) {
+                NodeTx n = new NodeTx();
+                n.txpowid = c.getString(0); n.block = c.getInt(1); n.time = c.getLong(2);
+                n.direction = c.getString(3); n.net = c.getString(4); n.token = c.getString(5);
+                n.counterparty = c.getString(6); n.inputs = c.getString(7); n.outputs = c.getString(8);
+                n.multiMore = c.getInt(9);
+                out.add(n);
+            }
+        } finally { c.close(); }
+        return out;
+    }
+
+    public int nodeTxCount() {
+        Cursor c = getReadableDatabase().rawQuery("SELECT COUNT(*) FROM nodetx", null);
+        try { return c.moveToFirst() ? c.getInt(0) : 0; } finally { c.close(); }
     }
 }

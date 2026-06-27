@@ -58,11 +58,13 @@ public class HistoryView extends BaseView {
     private int lastFetchBlock = -1;
     private boolean fetching = false;
     private boolean moreAvailable = false;       // last page was full ⇒ older txns exist
+    private int pageMax = 8;                      // adaptive page size — shrinks if a page exceeds the 256 KB cap
 
     public HistoryView(MainActivity a) {
         super(a, R.layout.view_history);
         container = find(R.id.historyContainer);
         root.setBackgroundColor(Design.bg());
+        loadPersisted();   // show accumulated on-chain history instantly, from the local DB
         render();
     }
 
@@ -95,14 +97,25 @@ public class HistoryView extends BaseView {
     /** Issue one bounded `history` call at the given offset and merge/render the result. */
     private void fetchPage(final int offset) {
         fetching = true;
-        act.node().cmd("history relevant:true max:" + FETCH_PAGE + " offset:" + offset, new NodeApi.Cb() {
+        act.node().cmd("history relevant:true max:" + pageMax + " offset:" + offset, new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
+                JSONObject resp = json.optJSONObject("response");
+                JSONArray txpows = resp == null ? null : resp.optJSONArray("txpows");
+                // The node caps any reply at 256 KB; an oversized page comes back dropped/empty. Shrink the
+                // page and retry the SAME offset (8→4→2→1) so a contract-heavy node still loads.
+                if (resp == null || txpows == null || !json.optBoolean("status", true)) {
+                    if (pageMax > 1) { pageMax = Math.max(1, pageMax / 2); fetchPage(offset); return; }
+                    fetching = false; return;
+                }
                 fetching = false;
                 lastFetchBlock = act.chainBlock();
                 mergePage(json, offset == 0);
                 render();
             }
-            @Override public void onError(String message) { fetching = false; }
+            @Override public void onError(String message) {
+                if (pageMax > 1) { pageMax = Math.max(1, pageMax / 2); fetchPage(offset); return; }
+                fetching = false;
+            }
         });
     }
 
@@ -111,6 +124,7 @@ public class HistoryView extends BaseView {
         JSONObject resp = json.optJSONObject("response");
         JSONArray txpows = resp == null ? null : resp.optJSONArray("txpows");
         if (txpows == null) return;
+        JSONArray details = resp.optJSONArray("details");   // per-txpow net effect → reliable in/out/self
 
         Set<String> mine = myAddressSet();
         Map<String, String> inputCoinToTxpow = new LinkedHashMap<>();   // head page, for confirming sends
@@ -136,13 +150,14 @@ public class HistoryView extends BaseView {
             }
 
             if (txpowid.isEmpty() || nodeIds.contains(txpowid) || nodeEntries.size() >= FETCH_CAP) continue;
-            Entry e = classify(ins, outs, mine);
+            Entry e = nodeEntryFromDetails(ins, outs, details != null && i < details.length() ? details.optJSONObject(i) : null);
             e.txpowid = txpowid;
             e.block = block;
             e.time = time;
             e.status = HistoryDb.STATUS_CONFIRMED;
             nodeEntries.add(e);
             nodeIds.add(txpowid);
+            act.history().upsertNodeTx(nodeTxOf(e));   // persist — accumulates + survives restart
         }
 
         Collections.sort(nodeEntries, new Comparator<Entry>() {
@@ -151,7 +166,7 @@ public class HistoryView extends BaseView {
                 return Long.compare(b.time, a.time);
             }
         });
-        moreAvailable = pageTxns >= FETCH_PAGE && nodeEntries.size() < FETCH_CAP;
+        moreAvailable = txpows.length() >= pageMax && nodeEntries.size() < FETCH_CAP;
 
         // Head page only: confirm any in-flight send whose spent input now appears on-chain; if a send
         // was broadcast long ago but isn't in the window, assume it confirmed (no explorer id) so it
@@ -465,6 +480,62 @@ public class HistoryView extends BaseView {
             e.multiMore = Math.max(0, toMine.size() - 1);
         }
         return e;
+    }
+
+    // ----- node-history entries (from details.difference) + persistence -----
+
+    /** Direction + net amount from the node's details.difference (net per-token effect on the wallet) —
+     *  reliable, unlike diffing outputs against our address set, so "in / out / self" is always correct. */
+    private Entry nodeEntryFromDetails(JSONArray ins, JSONArray outs, JSONObject difference) {
+        Entry e = new Entry();
+        e.inputs = ins; e.outputs = outs;
+        String pTid = "0x00"; BigDecimal pAmt = BigDecimal.ZERO; int toks = 0;
+        if (difference != null) for (java.util.Iterator<String> it = difference.keys(); it.hasNext(); ) {
+            String tid = it.next(); toks++;
+            BigDecimal a = dec(difference.optString(tid, "0"));
+            if (a.abs().compareTo(pAmt.abs()) > 0) { pAmt = a; pTid = tid; }
+        }
+        int sign = pAmt.signum();
+        e.direction = sign > 0 ? "in" : sign < 0 ? "out" : "self";
+        e.netDisplay = (sign > 0 ? "+" : sign < 0 ? "−" : "") + compactAmount(pAmt.abs().toPlainString());
+        e.tokenLabel = tokenLabel(pTid, ins, outs);
+        e.multiMore = Math.max(0, toks - 1);
+        e.counterparty = sign > 0 ? firstAddr(ins) : firstNonMineOut(outs);
+        return e;
+    }
+
+    /** First output address that isn't ours (the recipient), else the first output address. */
+    private String firstNonMineOut(JSONArray outs) {
+        if (outs != null) for (int i = 0; i < outs.length(); i++) {
+            JSONObject o = outs.optJSONObject(i);
+            if (o != null && !isMine(addrOf(o))) return addrOf(o);
+        }
+        return firstAddr(outs);
+    }
+
+    /** Snapshot an Entry into a persistable NodeTx row. */
+    private NodeTx nodeTxOf(Entry e) {
+        NodeTx n = new NodeTx();
+        n.txpowid = e.txpowid; n.block = e.block; n.time = e.time;
+        n.direction = e.direction; n.net = e.netDisplay; n.token = e.tokenLabel;
+        n.counterparty = e.counterparty; n.multiMore = e.multiMore;
+        n.inputs = e.inputs != null ? e.inputs.toString() : "[]";
+        n.outputs = e.outputs != null ? e.outputs.toString() : "[]";
+        return n;
+    }
+
+    /** Load the persisted on-chain history into memory at startup — instant + offline. */
+    private void loadPersisted() {
+        for (NodeTx n : act.history().loadNodeTx(FETCH_CAP)) {
+            if (n.txpowid == null || nodeIds.contains(n.txpowid)) continue;
+            Entry e = new Entry();
+            e.txpowid = n.txpowid; e.block = n.block; e.time = n.time;
+            e.direction = n.direction; e.netDisplay = n.net; e.tokenLabel = n.token;
+            e.counterparty = n.counterparty; e.multiMore = n.multiMore;
+            e.inputs = parseArr(n.inputs); e.outputs = parseArr(n.outputs);
+            e.status = HistoryDb.STATUS_CONFIRMED;
+            nodeEntries.add(e); nodeIds.add(n.txpowid);
+        }
     }
 
     /** Build a display Entry from a local store row (kind = pending / failed / confirmed). */
