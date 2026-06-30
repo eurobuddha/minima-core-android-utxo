@@ -24,7 +24,7 @@ public final class ImageLoader {
                 }
             };
 
-    private static final int THUMB_PX = 160;     // list/detail thumbnails
+    private static final int THUMB_PX = 320;     // list rows + the 128dp detail icon
     private static final int FULL_PX  = 1600;     // NFT full-resolution view (bounded so it can't OOM)
 
     private ImageLoader() {}
