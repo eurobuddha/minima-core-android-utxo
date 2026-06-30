@@ -129,7 +129,11 @@ public class MainActivity extends AppCompatActivity {
         root.setBackgroundColor(Design.bg());
         viewPager.setBackgroundColor(Design.bg());
         ((TextView) findViewById(R.id.brandTitle)).setTextColor(Design.accent());
-        ((TextView) findViewById(R.id.brandSub)).setTextColor(Design.dim());
+        TextView brandSub = findViewById(R.id.brandSub);
+        brandSub.setTextColor(Design.dim());
+        String ver;
+        try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { ver = "?"; }
+        brandSub.setText("PICK YOUR COINS  ·  v" + ver);
         blockNo.setTextColor(Design.dim());
         designToggle.setTextColor(Design.accent());
         designToggle.setText("◐ " + designTag());
