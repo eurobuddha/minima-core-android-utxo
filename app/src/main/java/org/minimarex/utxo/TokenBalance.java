@@ -28,4 +28,16 @@ public class TokenBalance {
         if (t.meta.decimals.isEmpty()) t.meta.decimals = b.optString("decimals", "");
         return t;
     }
+
+    public boolean isMinima() { return Util.isMinima(tokenid); }
+
+    public boolean hasIcon() { return meta != null && meta.iconUrl != null && !meta.iconUrl.isEmpty(); }
+
+    /** An NFT: a non-Minima token of total supply 1 with no fractional decimals. */
+    public boolean isNft() {
+        if (isMinima()) return false;
+        String d = meta == null ? "" : meta.decimals;
+        boolean whole = d.isEmpty() || d.equals("0");
+        return whole && "1".equals(total == null ? "" : total.trim());
+    }
 }

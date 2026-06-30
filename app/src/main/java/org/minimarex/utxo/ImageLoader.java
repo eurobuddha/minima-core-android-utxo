@@ -24,54 +24,78 @@ public final class ImageLoader {
                 }
             };
 
+    private static final int THUMB_PX = 160;     // list/detail thumbnails
+    private static final int FULL_PX  = 1600;     // NFT full-resolution view (bounded so it can't OOM)
+
     private ImageLoader() {}
 
+    /** Thumbnail load (downsampled) for a row/detail icon. */
     public static void load(final MainActivity act, final String url, final ImageView iv, int fallbackRes) {
+        load(act, url, iv, fallbackRes, THUMB_PX);
+    }
+
+    /** Full-resolution load (bounded to FULL_PX) for an NFT image view. */
+    public static void loadFull(final MainActivity act, final String url, final ImageView iv, int fallbackRes) {
+        load(act, url, iv, fallbackRes, FULL_PX);
+    }
+
+    private static void load(final MainActivity act, final String url, final ImageView iv, int fallbackRes, final int reqPx) {
         iv.setTag(url);
         if (url == null || url.isEmpty()) { iv.setImageResource(fallbackRes); return; }
 
-        Bitmap cached = CACHE.get(url);
+        String key = reqPx + "|" + url;
+        Bitmap cached = CACHE.get(key);
         if (cached != null) { iv.setImageBitmap(cached); return; }
 
         iv.setImageResource(fallbackRes);
         new Thread(() -> {
-            final Bitmap b = decode(url);
+            final Bitmap b = decode(url, reqPx);
             if (b == null) return;
-            CACHE.put(url, b);
-            act.runOnUiThread(() -> {
-                // Only apply if this ImageView is still showing the same url.
-                if (url.equals(iv.getTag())) iv.setImageBitmap(b);
-            });
+            CACHE.put(key, b);
+            act.runOnUiThread(() -> { if (url.equals(iv.getTag())) iv.setImageBitmap(b); });
         }).start();
     }
 
-    private static Bitmap decode(String url) {
+    /** Fetch the raw bytes then decode DOWNSAMPLED to ~reqPx, so a multi-MB icon never OOMs a thumbnail. */
+    private static Bitmap decode(String url, int reqPx) {
         try {
-            if (url.startsWith("data:")) return decodeDataUri(url);
-            String fetch = url.startsWith("ipfs://")
-                    ? "https://ipfs.io/ipfs/" + url.substring("ipfs://".length()) : url;
-            HttpURLConnection con = (HttpURLConnection) new URL(fetch).openConnection();
-            con.setConnectTimeout(8000);
-            con.setReadTimeout(10000);
-            InputStream in = con.getInputStream();
-            Bitmap b = BitmapFactory.decodeStream(in);
-            in.close();
-            con.disconnect();
-            return b;
-        } catch (Exception e) {
+            byte[] bytes = url.startsWith("data:") ? dataUriBytes(url) : fetch(url);
+            if (bytes == null || bytes.length == 0) return null;
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+            BitmapFactory.Options opt = new BitmapFactory.Options();
+            opt.inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, reqPx);
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, opt);
+        } catch (Throwable t) {     // includes OutOfMemoryError — a giant icon must never crash the loader
             return null;
         }
     }
 
-    private static Bitmap decodeDataUri(String dataUri) {
-        try {
-            int comma = dataUri.indexOf(',');
-            if (comma < 0) return null;
-            if (dataUri.substring(0, comma).contains("base64")) {
-                byte[] bytes = Base64.decode(dataUri.substring(comma + 1), Base64.DEFAULT);
-                return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            }
-        } catch (Exception ignored) {}
-        return null;
+    private static int sampleSize(int w, int h, int reqPx) {
+        int s = 1;
+        int max = Math.max(w, h);
+        while (max / s > reqPx) s <<= 1;
+        return Math.max(1, s);
+    }
+
+    private static byte[] fetch(String url) throws Exception {
+        String f = url.startsWith("ipfs://") ? "https://ipfs.io/ipfs/" + url.substring("ipfs://".length()) : url;
+        HttpURLConnection con = (HttpURLConnection) new URL(f).openConnection();
+        con.setConnectTimeout(8000);
+        con.setReadTimeout(15000);
+        con.setInstanceFollowRedirects(true);
+        try (InputStream in = con.getInputStream(); java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
+            byte[] buf = new byte[8192]; int n;
+            while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+            return bos.toByteArray();
+        } finally { con.disconnect(); }
+    }
+
+    private static byte[] dataUriBytes(String dataUri) {
+        int comma = dataUri.indexOf(',');
+        if (comma < 0) return null;
+        if (!dataUri.substring(0, comma).contains("base64")) return null;
+        return Base64.decode(dataUri.substring(comma + 1), Base64.DEFAULT);
     }
 }

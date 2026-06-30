@@ -55,14 +55,12 @@ public class BalancesView extends BaseView {
             TextView name = card.findViewById(R.id.balName);
             name.setText(b.name); name.setTextColor(Design.accent());
 
-            // Ticker is optional metadata — hide the field entirely when the token has none.
+            // Ticker (optional) + an NFT badge for total-1 tokens.
             TextView ticker = card.findViewById(R.id.balTicker);
-            ticker.setTextColor(Design.dim());
-            if (b.meta.ticker != null && !b.meta.ticker.isEmpty()) {
-                ticker.setText("· " + b.meta.ticker);
-            } else {
-                ticker.setVisibility(View.GONE);
-            }
+            ticker.setTextColor(b.isNft() ? Design.accent() : Design.dim());
+            String tk = (b.meta.ticker != null && !b.meta.ticker.isEmpty()) ? "· " + b.meta.ticker : "";
+            if (b.isNft()) tk = (tk.isEmpty() ? "" : tk + "   ") + "· NFT";
+            if (!tk.isEmpty()) ticker.setText(tk); else ticker.setVisibility(View.GONE);
 
             // Front and centre: the SENDABLE (spendable) balance — NOT the token's total supply.
             TextView total = card.findViewById(R.id.balTotal);
@@ -99,9 +97,119 @@ public class BalancesView extends BaseView {
                 desc.setText(b.meta.description);
             }
 
+            card.setOnClickListener(v -> showTokenDetail(b));   // tap → full detail
             container.addView(card);
         }
     }
+
+    /** Full-detail dialog for one token: large icon (tap → full-res), all metadata, and a Receive action. */
+    private void showTokenDetail(TokenBalance b) {
+        android.widget.ScrollView sv = new android.widget.ScrollView(act);
+        LinearLayout box = new LinearLayout(act);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(16), dp(20), dp(16));
+        box.setBackgroundColor(Design.bg());
+        sv.addView(box);
+
+        ImageView big = new ImageView(act);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
+        ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
+        if (b.isMinima()) big.setImageResource(R.mipmap.ic_launcher);
+        else ImageLoader.load(act, b.meta.iconUrl, big, R.drawable.ic_coin_placeholder);
+        box.addView(big);
+        if (b.hasIcon()) {
+            big.setOnClickListener(v -> showImageFull(b.meta.iconUrl));
+            TextView hint = new TextView(act);
+            hint.setText(b.isNft() ? "Tap image for full resolution" : "Tap image to enlarge");
+            hint.setTextColor(Design.dim()); hint.setTextSize(11f); hint.setGravity(Gravity.CENTER);
+            hint.setPadding(0, 0, 0, dp(8)); box.addView(hint);
+        }
+
+        TextView title = new TextView(act);
+        title.setText(b.name + (b.isNft() ? "   ·  NFT" : ""));
+        title.setTextColor(Design.accent()); title.setTextSize(18f);
+        title.setGravity(Gravity.CENTER); title.setTypeface(Design.typeface(), android.graphics.Typeface.BOLD);
+        title.setPadding(0, 0, 0, dp(8)); box.addView(title);
+
+        addKv(box, "Sendable", Util.tidyAmount(b.sendable));
+        addKv(box, "Confirmed", Util.tidyAmount(b.confirmed));
+        if (positive(b.unconfirmed)) addKv(box, "Pending", Util.tidyAmount(b.unconfirmed));
+        String locked = lockedAmount(b);
+        if (positive(locked)) addKv(box, "Locked", Util.tidyAmount(locked));
+        addKv(box, "Coins", String.valueOf(b.coins));
+        String supply = (b.isMinima() && !act.circulatingSupply().isEmpty())
+                ? wholeNumber(act.circulatingSupply()) : Util.tidyAmount(b.total);
+        addKv(box, "Supply", supply);
+        if (b.meta.ticker != null && !b.meta.ticker.isEmpty()) addKv(box, "Ticker", b.meta.ticker);
+        if (b.meta.decimals != null && !b.meta.decimals.isEmpty()) addKv(box, "Decimals", b.meta.decimals);
+        if (notEmpty(b.meta.owner)) addKv(box, "Owner", b.meta.owner);
+
+        box.addView(sectionLabel("Token ID"));
+        TextView idv = new TextView(act);
+        idv.setText(b.tokenid); idv.setTextColor(Design.text()); idv.setTextSize(12f);
+        idv.setTextIsSelectable(true); idv.setTypeface(android.graphics.Typeface.MONOSPACE);
+        box.addView(idv);
+
+        if (notEmpty(b.meta.description)) {
+            box.addView(sectionLabel("Description"));
+            TextView d = new TextView(act);
+            d.setText(b.meta.description); d.setTextColor(Design.dim()); d.setTextSize(13f);
+            box.addView(d);
+        }
+        if (notEmpty(b.meta.externalUrl)) box.addView(linkRow("Website", b.meta.externalUrl));
+        if (notEmpty(b.meta.webvalidate)) box.addView(linkRow("Web validation", b.meta.webvalidate));
+
+        new androidx.appcompat.app.AlertDialog.Builder(act)
+                .setView(sv)
+                .setPositiveButton("Receive", (d, w) -> act.goToTab(MainActivity.TAB_RECEIVE))
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+    /** Full-screen, full-resolution image (for NFT art). Tap to dismiss. */
+    private void showImageFull(String url) {
+        ImageView iv = new ImageView(act);
+        iv.setAdjustViewBounds(true);
+        iv.setBackgroundColor(0xFF000000);
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        ImageLoader.loadFull(act, url, iv, R.drawable.ic_coin_placeholder);
+        androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(act).setView(iv).create();
+        iv.setOnClickListener(v -> dlg.dismiss());
+        dlg.show();
+    }
+
+    private void addKv(LinearLayout box, String label, String value) {
+        LinearLayout r = new LinearLayout(act);
+        r.setOrientation(LinearLayout.HORIZONTAL); r.setPadding(0, dp(4), 0, dp(4));
+        TextView l = new TextView(act); l.setText(label); l.setTextColor(Design.dim()); l.setTextSize(13f);
+        TextView v = new TextView(act); v.setText(value); v.setTextColor(Design.text()); v.setTextSize(13f); v.setGravity(Gravity.END);
+        r.addView(l, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        r.addView(v, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.6f));
+        box.addView(r);
+    }
+
+    private TextView sectionLabel(String s) {
+        TextView t = new TextView(act);
+        t.setText(s); t.setAllCaps(true); t.setTextColor(Design.dim()); t.setTextSize(11f);
+        t.setPadding(0, dp(12), 0, dp(2));
+        return t;
+    }
+
+    private LinearLayout linkRow(String label, String url) {
+        LinearLayout r = new LinearLayout(act);
+        r.setOrientation(LinearLayout.HORIZONTAL); r.setPadding(0, dp(8), 0, dp(8));
+        TextView l = new TextView(act); l.setText(label); l.setTextColor(Design.dim()); l.setTextSize(13f);
+        TextView v = new TextView(act); v.setText("↗ open"); v.setTextColor(Design.accent()); v.setTextSize(13f); v.setGravity(Gravity.END);
+        r.addView(l, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        r.addView(v, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        r.setOnClickListener(x -> {
+            try { act.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))); }
+            catch (Exception ignore) {}
+        });
+        return r;
+    }
+
+    private static boolean notEmpty(String s) { return s != null && !s.isEmpty(); }
 
     /** True if the amount string parses to a strictly positive number; false on null/garbage. */
     private boolean positive(String amt) {

@@ -16,6 +16,9 @@ public class TokenMeta {
     public String iconUrl = "";
     public String description = "";
     public String decimals = "";
+    public String owner = "";
+    public String webvalidate = "";
+    public String externalUrl = "";
 
     public static TokenMeta parse(Object token, String tokenid) {
         TokenMeta m = new TokenMeta();
@@ -52,6 +55,15 @@ public class TokenMeta {
             m.ticker = first(
                     meta != null ? meta.optString("ticker", "") : "",
                     t.optString("ticker", ""));
+            m.owner = first(
+                    meta != null ? meta.optString("owner", "") : "",
+                    t.optString("owner", ""));
+            m.webvalidate = first(
+                    meta != null ? meta.optString("webvalidate", "") : "",
+                    t.optString("webvalidate", ""));
+            m.externalUrl = decode(first(
+                    meta != null ? meta.optString("external_url", "") : "",
+                    t.optString("external_url", "")));
         }
         return m;
     }
