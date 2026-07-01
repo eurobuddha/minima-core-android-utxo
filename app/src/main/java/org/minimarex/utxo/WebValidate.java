@@ -19,6 +19,8 @@ public final class WebValidate {
 
     private static final ConcurrentHashMap<String, Boolean> CACHE = new ConcurrentHashMap<>();
     private static final Set<String> INFLIGHT = Collections.synchronizedSet(new HashSet<>());
+    private static final java.util.concurrent.ExecutorService EXEC =
+            java.util.concurrent.Executors.newFixedThreadPool(2);
 
     private WebValidate() {}
 
@@ -31,18 +33,19 @@ public final class WebValidate {
         if (CACHE.containsKey(k)) return;
         if (webvalidateUrl == null || webvalidateUrl.trim().isEmpty()) { CACHE.put(k, Boolean.FALSE); return; }
         if (!INFLIGHT.add(k)) return;
-        new Thread(() -> {
+        EXEC.execute(() -> {
             boolean ok = fetchContains(webvalidateUrl.trim(), tokenid);
             CACHE.put(k, ok);
             INFLIGHT.remove(k);
-            if (onDone != null) act.runOnUiThread(onDone);
-        }).start();
+            if (onDone != null) act.runOnUiThread(() -> { if (!act.isDestroyed()) onDone.run(); });
+        });
     }
 
     private static boolean fetchContains(String url, String tokenid) {
         HttpURLConnection c = null;
         try {
             if (!url.startsWith("http")) return false;
+            if (ImageLoader.isBlockedHost(new URL(url).getHost())) return false;   // no loopback/LAN webvalidate targets
             c = (HttpURLConnection) new URL(url).openConnection();
             c.setConnectTimeout(8000);
             c.setReadTimeout(10000);

@@ -48,6 +48,14 @@ public class BalancesView extends BaseView {
         for (TokenBalance b : balances) container.addView(buildCard(b));
     }
 
+    private final Runnable refreshTask = this::refresh;
+
+    /** Coalesce the async web-validation callbacks (one per token) into a single re-render. */
+    private void scheduleRefresh() {
+        container.removeCallbacks(refreshTask);
+        container.postDelayed(refreshTask, 120);
+    }
+
     // ---------- one balance card, matching the utxoWallet dapp exactly (square, bordered, mono) ----------
 
     private static final int MP = LinearLayout.LayoutParams.MATCH_PARENT;
@@ -95,12 +103,12 @@ public class BalancesView extends BaseView {
             icon.setScaleType(ImageView.ScaleType.CENTER_CROP);          // object-fit: cover
             icon.setImageBitmap(Identicon.forToken(b.tokenid, dp(40)));  // deterministic base
             slot.addView(icon);
-            ImageLoader.loadOver(act, b.meta.iconUrl, icon, this::refresh);   // real graphic on top; re-render when it lands
+            ImageLoader.loadOver(act, b.meta.iconUrl, icon, null);   // updates this ImageView in place — no full re-render
         }
 
         // Web-validation checkmark: the token's webvalidate URL hosts its tokenid (domain-ownership proof).
         if (!nativeCoin && notEmpty(b.meta.webvalidate)) {
-            WebValidate.ensure(act, b.tokenid, b.meta.webvalidate, this::refresh);
+            WebValidate.ensure(act, b.tokenid, b.meta.webvalidate, this::scheduleRefresh);
             if (Boolean.TRUE.equals(WebValidate.status(b.tokenid))) {
                 ImageView badge = new ImageView(act);
                 int bs = dp(15);

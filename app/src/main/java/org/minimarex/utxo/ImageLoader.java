@@ -26,6 +26,11 @@ public final class ImageLoader {
 
     private static final int THUMB_PX = 320;     // list rows + the 128dp detail icon
     private static final int FULL_PX  = 1600;     // NFT full-resolution view (bounded so it can't OOM)
+    private static final int MAX_BYTES = 8 * 1024 * 1024;   // hard cap so a hostile icon url can't OOM us
+
+    // Small shared pool — token metadata can name dozens of icon urls; don't spawn a raw thread per icon.
+    private static final java.util.concurrent.ExecutorService EXEC =
+            java.util.concurrent.Executors.newFixedThreadPool(4);
 
     private ImageLoader() {}
 
@@ -48,15 +53,16 @@ public final class ImageLoader {
         String key = THUMB_PX + "|" + url;
         Bitmap cached = CACHE.get(key);
         if (cached != null) { iv.setImageBitmap(cached); return; }
-        new Thread(() -> {
+        EXEC.execute(() -> {
             final Bitmap b = decode(url, THUMB_PX);
             if (b == null) return;                      // keep the identicon on failure
             CACHE.put(key, b);
             act.runOnUiThread(() -> {
+                if (act.isDestroyed()) return;          // activity gone (e.g. theme recreate) — don't touch its views
                 if (url.equals(iv.getTag())) iv.setImageBitmap(b);
                 if (onLoaded != null) onLoaded.run();
             });
-        }).start();
+        });
     }
 
     private static void load(final MainActivity act, final String url, final ImageView iv, int fallbackRes, final int reqPx) {
@@ -68,12 +74,15 @@ public final class ImageLoader {
         if (cached != null) { iv.setImageBitmap(cached); return; }
 
         iv.setImageResource(fallbackRes);
-        new Thread(() -> {
+        EXEC.execute(() -> {
             final Bitmap b = decode(url, reqPx);
             if (b == null) return;
             CACHE.put(key, b);
-            act.runOnUiThread(() -> { if (url.equals(iv.getTag())) iv.setImageBitmap(b); });
-        }).start();
+            act.runOnUiThread(() -> {
+                if (act.isDestroyed()) return;
+                if (url.equals(iv.getTag())) iv.setImageBitmap(b);
+            });
+        });
     }
 
     /** Fetch the raw bytes then decode DOWNSAMPLED to ~reqPx, so a multi-MB icon never OOMs a thumbnail.
@@ -131,15 +140,33 @@ public final class ImageLoader {
 
     private static byte[] fetch(String url) throws Exception {
         String f = url.startsWith("ipfs://") ? "https://ipfs.io/ipfs/" + url.substring("ipfs://".length()) : url;
-        HttpURLConnection con = (HttpURLConnection) new URL(f).openConnection();
+        URL u = new URL(f);
+        if (isBlockedHost(u.getHost())) return null;   // token metadata must not point us at loopback/LAN (e.g. the node RPC)
+        HttpURLConnection con = (HttpURLConnection) u.openConnection();
         con.setConnectTimeout(8000);
         con.setReadTimeout(15000);
         con.setInstanceFollowRedirects(true);
         try (InputStream in = con.getInputStream(); java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
-            byte[] buf = new byte[8192]; int n;
-            while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+            byte[] buf = new byte[8192]; int n; int total = 0;
+            while ((n = in.read(buf)) > 0) {
+                total += n;
+                if (total > MAX_BYTES) return null;    // oversized response — bail, keep the identicon
+                bos.write(buf, 0, n);
+            }
             return bos.toByteArray();
         } finally { con.disconnect(); }
+    }
+
+    /** True for loopback / any-local / link-local / site-local (private) hosts, or anything unresolvable. */
+    static boolean isBlockedHost(String host) {
+        if (host == null || host.isEmpty()) return true;
+        try {
+            for (java.net.InetAddress a : java.net.InetAddress.getAllByName(host)) {
+                if (a.isLoopbackAddress() || a.isAnyLocalAddress() || a.isLinkLocalAddress() || a.isSiteLocalAddress())
+                    return true;
+            }
+        } catch (Exception e) { return true; }
+        return false;
     }
 
     private static byte[] dataUriBytes(String dataUri) {
