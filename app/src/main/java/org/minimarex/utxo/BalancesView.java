@@ -79,11 +79,14 @@ public class BalancesView extends BaseView {
             slot.setBackground(borderBox(Design.surface(), Design.border()));
             ImageView g = new ImageView(act);
             g.setLayoutParams(new FrameLayout.LayoutParams(MP, MP));
-            g.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int pad = dp(7); g.setPadding(pad, pad, pad, pad);
-            Bitmap logo = renderMinimaLogo(dp(40));                             // the real Minima mark (bundled SVG)
-            g.setImageBitmap(logo != null ? logo : Identicon.minima(dp(24), Design.accent()));
+            g.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            g.setImageResource(R.drawable.minima_coin);                        // official Minima coin icon
             slot.addView(g);
+            ImageView badge = new ImageView(act);                              // native coin is the official verified coin
+            int bs = dp(15);
+            badge.setLayoutParams(new FrameLayout.LayoutParams(bs, bs, Gravity.BOTTOM | Gravity.END));
+            badge.setImageBitmap(Identicon.checkBadge(bs));
+            slot.addView(badge);
         } else {
             slot.setBackground(borderBox(Design.surface(), Design.border()));
             ImageView icon = new ImageView(act);
@@ -224,11 +227,8 @@ public class BalancesView extends BaseView {
         ImageView big = new ImageView(act);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
-        if (b.isMinima()) {
-            Bitmap l = renderMinimaLogo(dp(128));
-            big.setImageBitmap(l != null ? l : Identicon.minima(dp(128), Design.accent()));
-            big.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        } else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
+        if (b.isMinima()) { big.setImageResource(R.drawable.minima_coin); big.setScaleType(ImageView.ScaleType.CENTER_CROP); }
+        else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
         box.addView(big);
         if (b.hasIcon()) {
             big.setOnClickListener(v -> showImageFull(b.meta.iconUrl));
