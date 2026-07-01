@@ -39,6 +39,22 @@ public final class ImageLoader {
         load(act, url, iv, fallbackRes, FULL_PX);
     }
 
+    /** Load ON TOP of whatever the ImageView already shows (an identicon): keeps it on failure, replaces on
+     *  success. Matches the dapp: identicon base, real graphic wins when it loads. */
+    public static void loadOver(final MainActivity act, final String url, final ImageView iv) {
+        iv.setTag(url);
+        if (url == null || url.isEmpty()) return;      // keep the identicon
+        String key = THUMB_PX + "|" + url;
+        Bitmap cached = CACHE.get(key);
+        if (cached != null) { iv.setImageBitmap(cached); return; }
+        new Thread(() -> {
+            final Bitmap b = decode(url, THUMB_PX);
+            if (b == null) return;                      // keep the identicon on failure
+            CACHE.put(key, b);
+            act.runOnUiThread(() -> { if (url.equals(iv.getTag())) iv.setImageBitmap(b); });
+        }).start();
+    }
+
     private static void load(final MainActivity act, final String url, final ImageView iv, int fallbackRes, final int reqPx) {
         iv.setTag(url);
         if (url == null || url.isEmpty()) { iv.setImageResource(fallbackRes); return; }

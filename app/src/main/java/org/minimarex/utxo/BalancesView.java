@@ -46,10 +46,11 @@ public class BalancesView extends BaseView {
             // Icon: the app launcher icon for native Minima, otherwise the token's own iconUrl
             // (async, with a placeholder while loading / on failure).
             ImageView icon = card.findViewById(R.id.balIcon);
-            if (Util.isMinima(b.tokenid)) {
-                icon.setImageResource(R.mipmap.ic_launcher);
+            if (b.isMinima()) {
+                icon.setImageBitmap(Identicon.minima(dp(48), Design.accent()));
             } else {
-                ImageLoader.load(act, b.meta.iconUrl, icon, R.drawable.ic_coin_placeholder);
+                icon.setImageBitmap(Identicon.forToken(b.tokenid, dp(48)));  // deterministic base
+                ImageLoader.loadOver(act, b.meta.iconUrl, icon);             // real graphic on top if present
             }
 
             TextView name = card.findViewById(R.id.balName);
@@ -114,8 +115,8 @@ public class BalancesView extends BaseView {
         ImageView big = new ImageView(act);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
-        if (b.isMinima()) big.setImageResource(R.mipmap.ic_launcher);
-        else ImageLoader.load(act, b.meta.iconUrl, big, R.drawable.ic_coin_placeholder);
+        if (b.isMinima()) big.setImageBitmap(Identicon.minima(dp(128), Design.accent()));
+        else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big); }
         box.addView(big);
         if (b.hasIcon()) {
             big.setOnClickListener(v -> showImageFull(b.meta.iconUrl));

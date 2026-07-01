@@ -44,11 +44,14 @@ public class TokenMeta {
                 m.name = (String) nameNode;
             }
 
-            m.iconUrl = decode(first(
+            // Canonical location is c.token.url; resolve it (artimage / data / http / svg / base64) exactly
+            // like the utxoWallet dapp. Returns "" when there's nothing image-shaped (→ identicon).
+            String resolved = IconResolver.resolve(first(
                     meta != null ? meta.optString("url", "") : "",
                     t.optString("url", ""),
                     meta != null ? meta.optString("icon", "") : "",
                     t.optString("icon", "")));
+            m.iconUrl = resolved == null ? "" : resolved;
             m.description = first(
                     meta != null ? meta.optString("description", "") : "",
                     t.optString("description", ""));
