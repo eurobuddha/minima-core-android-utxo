@@ -3,13 +3,18 @@ package org.minimarex.utxo;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -173,135 +178,210 @@ public class WalletView extends BaseView {
             return;
         }
 
-        LayoutInflater inf = LayoutInflater.from(act);
         for (Map.Entry<String, String> e : order.entrySet()) {
             String hex = e.getKey();
             String mini = (e.getValue() != null && !e.getValue().isEmpty()) ? e.getValue() : hex;
             List<Coin> addrCoins = byAddr.get(hex);
             int count = addrCoins == null ? 0 : addrCoins.size();
             boolean isCollapsed = collapsed.contains(hex);
-
-            container.addView(buildHeader(hex, mini, count, isCollapsed, !ownHex.contains(hex)));
-
-            if (isCollapsed) continue;
-
-            if (count == 0) {
-                TextView empty = new TextView(act);
-                empty.setText("—");
-                empty.setTextColor(Design.dim());
-                empty.setTextSize(12f);
-                empty.setPadding(0, 0, 0, dp(4));
-                container.addView(empty);
-                continue;
-            }
-
-            for (Coin c : addrCoins) container.addView(buildCoinRow(inf, c));
+            boolean isContract = !ownHex.contains(hex);
+            container.addView(buildCard(hex, mini, addrCoins, count, isCollapsed, isContract,
+                    minimaTotal.getOrDefault(hex, BigDecimal.ZERO)));
         }
     }
 
-    /** Builds one collapsible address card header: caret + short address + (contract badge) + coin count
-     *  + COPY. Contract addresses (funds locked in a script, not ours) get an accent badge + accent strip
-     *  so they're never mistaken for one of our own wallet addresses. */
-    private View buildHeader(String hex, String mini, int count, boolean isCollapsed, boolean isContract) {
-        LinearLayout header = new LinearLayout(act);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(0, dp(14), 0, dp(4));
+    private static final int WRAP = LinearLayout.LayoutParams.WRAP_CONTENT;
+    private static final int MATCH = LinearLayout.LayoutParams.MATCH_PARENT;
 
-        // Thin accent strip down the left of a contract row (mirrors the original's amber left border).
-        if (isContract) {
-            View strip = new View(act);
-            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(dp(3), dp(16));
-            slp.rightMargin = dp(6);
-            strip.setLayoutParams(slp);
-            strip.setBackgroundColor(Design.accent());
-            header.addView(strip);
+    /** One address as a dapp-style .card: 1px bordered box (radius 0), surface header strip, meta row, coin rows.
+     *  Contract addresses (funds in a script, not ours) get the 3px amber left rule + CONTRACT badge. */
+    private View buildCard(String hex, String mini, List<Coin> addrCoins, int count,
+                           boolean isCollapsed, boolean isContract, BigDecimal minimaAmt) {
+        LinearLayout card = new LinearLayout(act);
+        card.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        clp.bottomMargin = dp(6);
+        card.setLayoutParams(clp);
+        card.setBackground(cardBg(isContract));
+
+        card.addView(buildAddrRow(hex, mini, isCollapsed));
+        if (isCollapsed) return card;
+
+        card.addView(buildMetaRow(minimaAmt, count, isContract));
+
+        if (count == 0) {
+            TextView empty = new TextView(act);
+            empty.setText("empty");
+            empty.setTypeface(Design.typeface());
+            empty.setAllCaps(true);
+            empty.setTextSize(10f);
+            empty.setTextColor(Design.dim2());
+            empty.setPadding(dp(8), dp(6), dp(8), dp(6));
+            card.addView(empty);
+            return card;
         }
 
+        // Minima (0x00) first, then tokens; confirmed before pending, amount descending — like the dapp.
+        List<Coin> sorted = new ArrayList<>(addrCoins);
+        Collections.sort(sorted, (a, b) -> {
+            boolean am = Util.isMinima(a.tokenid), bm = Util.isMinima(b.tokenid);
+            if (am != bm) return am ? -1 : 1;
+            if (a.confirmed != b.confirmed) return a.confirmed ? -1 : 1;
+            try { return new BigDecimal(b.amount).compareTo(new BigDecimal(a.amount)); } catch (Exception e) { return 0; }
+        });
+        for (int i = 0; i < sorted.size(); i++) card.addView(buildCoinRow(sorted.get(i), i == sorted.size() - 1));
+        return card;
+    }
+
+    /** .card-addr-row: surface strip, bottom border, caret + address + COPY; tap toggles collapse. */
+    private View buildAddrRow(String hex, String mini, boolean isCollapsed) {
+        LinearLayout row = new LinearLayout(act);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackground(bottomBorder(Design.surface(), Design.border(), dp(1)));
+        row.setPadding(dp(8), dp(5), dp(8), dp(5));
+
         TextView caret = new TextView(act);
-        caret.setText(isCollapsed ? "▸ " : "▾ ");
+        caret.setText(isCollapsed ? "▶" : "▼");
+        caret.setTextSize(8f);
         caret.setTextColor(Design.dim());
-        caret.setTextSize(12f);
-        header.addView(caret);
+        caret.setPadding(0, 0, dp(8), 0);
+        row.addView(caret);
 
         TextView addr = new TextView(act);
         addr.setText(Util.shorten(mini));
-        addr.setTextColor(isContract ? Design.accent() : Design.text());
-        addr.setTextSize(13f);
-        addr.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        header.addView(addr);
+        addr.setTypeface(Design.typeface());
+        addr.setTextSize(11f);
+        addr.setTextColor(Design.heading());
+        addr.setLayoutParams(new LinearLayout.LayoutParams(0, WRAP, 1f));
+        row.addView(addr);
 
-        // "CONTRACT" pill — the explicit label that this address isn't one of our wallets.
-        if (isContract) {
-            TextView badge = new TextView(act);
-            badge.setText("CONTRACT");
-            badge.setTextSize(9f);
-            badge.setTypeface(Typeface.DEFAULT_BOLD);
-            badge.setTextColor(Design.accent());
-            badge.setPadding(dp(6), dp(1), dp(6), dp(1));
-            GradientDrawable bd = new GradientDrawable();
-            bd.setColor((Design.accent() & 0x00FFFFFF) | 0x22000000);   // faint accent fill
-            bd.setCornerRadius(dp(4));
-            bd.setStroke(dp(1), Design.accent());
-            badge.setBackground(bd);
-            LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            blp.rightMargin = dp(8);
-            badge.setLayoutParams(blp);
-            header.addView(badge);
-        }
-
-        TextView cnt = new TextView(act);
-        cnt.setText(count == 0 ? "0 coins" : (count + (count == 1 ? " coin" : " coins")));
-        cnt.setTextColor(act.getColor(count == 0 ? R.color.ux_subtext : R.color.ux_accent));
-        cnt.setTextSize(12f);
-        cnt.setPadding(0, 0, dp(8), 0);
-        header.addView(cnt);
-
-        Button copy = new Button(act, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        TextView copy = new TextView(act);
         copy.setText("COPY");
-        copy.setTextColor(Design.accent());
-        copy.setTextSize(11f);
-        copy.setMinWidth(0);
-        copy.setMinimumWidth(0);
-        copy.setPadding(dp(10), 0, dp(10), 0);
+        copy.setTypeface(Design.typeface());
+        copy.setTextSize(9f);
+        copy.setTextColor(Design.dim());
+        copy.setPadding(dp(6), dp(2), dp(6), dp(2));
+        GradientDrawable cb = new GradientDrawable();
+        cb.setColor(Design.bg());
+        cb.setStroke(dp(1), Design.border());
+        copy.setBackground(cb);
         copy.setOnClickListener(v -> copyToClipboard("Address", mini));
-        header.addView(copy);
+        row.addView(copy);
 
-        // Tapping the header (not the COPY button) collapses/expands the card.
-        header.setOnClickListener(v -> {
+        row.setOnClickListener(v -> {
             if (isCollapsed) collapsed.remove(hex); else collapsed.add(hex);
             refresh();
         });
-        return header;
+        return row;
     }
 
-    /** Builds one UTXO row: checkbox (only if confirmed+sendable), amount, copyable coinid, status. */
-    private View buildCoinRow(LayoutInflater inf, Coin c) {
-        View row = inf.inflate(R.layout.view_coin_row, container, false);
-        CheckBox cb = row.findViewById(R.id.coinCheck);
-        TextView amt = row.findViewById(R.id.coinAmount);
-        TextView cid = row.findViewById(R.id.coinId);
-        TextView st = row.findViewById(R.id.coinStatus);
+    /** .card-meta-row: total MINIMA · coin count, with a CONTRACT badge pushed right for script addresses. */
+    private View buildMetaRow(BigDecimal minimaAmt, int count, boolean isContract) {
+        LinearLayout row = new LinearLayout(act);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackground(bottomBorder(Design.bg(), Design.border2(), dp(1)));
+        row.setPadding(dp(8), dp(4), dp(8), dp(4));
 
-        amt.setText(Util.tidyAmount(c.amount) + "  " + c.tokenName);
-        amt.setTextColor(Design.text());
-        amt.setTypeface(Design.typeface(), Typeface.BOLD);   // mono, matching the dapp
-        cid.setText(Util.shorten(c.coinid));
-        cid.setTextColor(Design.dim());
-        st.setTextColor(Design.dim());
+        TextView meta = new TextView(act);
+        meta.setText(Util.tidyAmount(minimaAmt.toPlainString()) + " MINIMA  ·  "
+                + count + (count == 1 ? " coin" : " coins"));
+        meta.setTypeface(Design.typeface());
+        meta.setAllCaps(true);
+        meta.setTextSize(10f);
+        meta.setTextColor(Design.dim());
+        meta.setLayoutParams(new LinearLayout.LayoutParams(0, WRAP, 1f));
+        row.addView(meta);
 
-        boolean usable = c.confirmed && c.sendable;
-        cb.setButtonTintList(android.content.res.ColorStateList.valueOf(Design.accent()));   // correct accent, per theme
-        cb.setEnabled(usable);
-        cb.setChecked(act.isSelected(c.coinid));
-        st.setText(!c.confirmed ? "pending" : (c.sendable ? "" : "watch"));
+        if (isContract) {
+            TextView badge = new TextView(act);
+            badge.setText("CONTRACT");
+            badge.setTypeface(Design.typeface(), Typeface.BOLD);
+            badge.setTextSize(8.5f);
+            badge.setTextColor(Design.amber());
+            badge.setPadding(dp(6), dp(1), dp(6), dp(1));
+            GradientDrawable bd = new GradientDrawable();
+            bd.setColor((Design.amber() & 0x00FFFFFF) | 0x22000000);   // faint amber fill
+            bd.setStroke(dp(1), Design.amber());
+            badge.setBackground(bd);
+            row.addView(badge);
+        }
+        return row;
+    }
 
-        View.OnClickListener toggle = v -> { if (usable) act.toggleCoin(c); };
-        cb.setOnClickListener(toggle);
-        row.setOnClickListener(toggle);
-        // Tap the coinid to copy it (consumes the click, so it doesn't toggle selection).
-        cid.setOnClickListener(v -> copyToClipboard("Coin id", c.coinid));
+    /** .card background: 1px near-black border, radius 0; contract adds a 3px amber left rule. */
+    private Drawable cardBg(boolean contract) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(Design.bg());
+        g.setStroke(dp(1), Design.border());
+        if (!contract) return g;
+        LayerDrawable ld = new LayerDrawable(new Drawable[]{ g, new ColorDrawable(Design.amber()) });
+        ld.setLayerGravity(1, Gravity.LEFT);
+        ld.setLayerWidth(1, dp(3));
+        return ld;
+    }
+
+    /** A solid fill with only a bottom rule of width w (the dapp's header/row dividers). */
+    private Drawable bottomBorder(int bg, int line, int w) {
+        LayerDrawable ld = new LayerDrawable(new Drawable[]{ new ColorDrawable(line), new ColorDrawable(bg) });
+        ld.setLayerInset(1, 0, 0, 0, w);
+        return ld;
+    }
+
+    /** .utxo-row: brutalist square checkbox + bold mono amount (right) + token tag + status; bottom divider
+     *  except on the last row; selected → accent-soft; unconfirmed/watch dimmed and not selectable. */
+    private View buildCoinRow(Coin c, boolean last) {
+        boolean usable = c.confirmed && c.sendable;      // only spendable coins toggle (keeps sends valid)
+        boolean selected = act.isSelected(c.coinid);
+        int bg = selected ? Design.accentSoft() : Design.bg();
+
+        LinearLayout row = new LinearLayout(act);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(24));
+        row.setPadding(dp(8), dp(4), dp(8), dp(4));
+        row.setBackground(last ? new ColorDrawable(bg) : bottomBorder(bg, Design.border2(), dp(1)));
+        if (!usable) row.setAlpha(0.36f);
+
+        ImageView box = new ImageView(act);
+        LinearLayout.LayoutParams bxlp = new LinearLayout.LayoutParams(dp(14), dp(14));
+        bxlp.rightMargin = dp(8);
+        box.setLayoutParams(bxlp);
+        box.setImageBitmap(Identicon.squareCheck(dp(14), selected, Design.bg(), Design.border(), Design.accent()));
+        row.addView(box);
+
+        TextView amt = new TextView(act);
+        amt.setText(Util.tidyAmount(c.amount));
+        amt.setTypeface(Design.typeface(), Typeface.BOLD);
+        amt.setTextSize(12f);
+        amt.setTextColor(Design.heading());
+        amt.setGravity(Gravity.END);
+        amt.setLayoutParams(new LinearLayout.LayoutParams(0, WRAP, 1f));
+        row.addView(amt);
+
+        TextView tok = new TextView(act);
+        tok.setText(c.tokenName == null ? "" : c.tokenName.toUpperCase());
+        tok.setTypeface(Design.typeface(), Typeface.BOLD);
+        tok.setTextSize(9f);
+        tok.setTextColor(Design.dim());
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        tlp.leftMargin = dp(8);
+        tok.setLayoutParams(tlp);
+        row.addView(tok);
+
+        TextView st = new TextView(act);
+        st.setText(!c.confirmed ? "PENDING" : (c.sendable ? "·" : "WATCH"));
+        st.setTypeface(Design.typeface());
+        st.setTextSize(9f);
+        st.setTextColor(!c.confirmed ? Design.amber() : Design.dim2());
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        slp.leftMargin = dp(8);
+        st.setLayoutParams(slp);
+        row.addView(st);
+
+        row.setOnClickListener(v -> { if (usable) act.toggleCoin(c); });
+        row.setOnLongClickListener(v -> { copyToClipboard("Coin id", c.coinid); return true; });
         return row;
     }
 

@@ -87,6 +87,27 @@ public final class Identicon {
         return bmp;
     }
 
+    /** The dapp's brutalist square checkbox: 1px border, accent fill + black tick when checked. */
+    public static Bitmap squareCheck(int px, boolean checked, int boxBg, int border, int accent) {
+        Bitmap b = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(b);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(checked ? accent : boxBg);
+        c.drawRect(0, 0, px, px, p);
+        p.setStyle(Paint.Style.STROKE);
+        float sw = Math.max(1f, px * 0.08f); p.setStrokeWidth(sw); p.setColor(border);
+        c.drawRect(sw / 2, sw / 2, px - sw / 2, px - sw / 2, p);
+        if (checked) {
+            p.setColor(0xFF000000);   // dapp: black tick on the orange fill (both themes)
+            p.setStrokeWidth(px * 0.13f); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND);
+            Path path = new Path();
+            path.moveTo(px * 0.26f, px * 0.52f); path.lineTo(px * 0.44f, px * 0.70f); path.lineTo(px * 0.76f, px * 0.30f);
+            c.drawPath(path, p);
+        }
+        return b;
+    }
+
     /** HSL (h 0-360, s/l 0-100) → ARGB int. */
     private static int hsl(int h, int s, int l) {
         float ss = s / 100f, ll = l / 100f;

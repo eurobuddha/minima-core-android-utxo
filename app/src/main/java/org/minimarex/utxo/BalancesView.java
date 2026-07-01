@@ -76,12 +76,12 @@ public class BalancesView extends BaseView {
         slp.rightMargin = dp(12);
         slot.setLayoutParams(slp);
         if (nativeCoin) {
-            slot.setBackground(borderBox(Design.surface(), Design.border()));
+            slot.setBackground(borderBox(0xFFFFFFFF, Design.border()));         // official coin: white tile, black M
             ImageView g = new ImageView(act);
             g.setLayoutParams(new FrameLayout.LayoutParams(MP, MP));
             g.setScaleType(ImageView.ScaleType.FIT_CENTER);
             int mp = dp(8); g.setPadding(mp, mp, mp, mp);
-            g.setImageResource(R.drawable.minima_coin);                        // official Minima mark (MediaKit), loaded as-is
+            g.setImageResource(R.drawable.minima_coin);                        // official Minima M (MediaKit shape), brand-black
             slot.addView(g);
             ImageView badge = new ImageView(act);                              // native coin is the official verified coin
             int bs = dp(15);
@@ -228,7 +228,7 @@ public class BalancesView extends BaseView {
         ImageView big = new ImageView(act);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
-        if (b.isMinima()) { big.setImageResource(R.drawable.minima_coin); big.setScaleType(ImageView.ScaleType.FIT_CENTER); }
+        if (b.isMinima()) { big.setBackgroundColor(0xFFFFFFFF); int mp = dp(20); big.setPadding(mp, mp, mp, mp); big.setImageResource(R.drawable.minima_coin); big.setScaleType(ImageView.ScaleType.FIT_CENTER); }
         else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
         box.addView(big);
         if (b.hasIcon()) {
