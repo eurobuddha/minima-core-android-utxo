@@ -1,5 +1,6 @@
 package org.minimarex.utxo;
 
+import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -75,10 +76,13 @@ public class BalancesView extends BaseView {
         slp.rightMargin = dp(12);
         slot.setLayoutParams(slp);
         if (nativeCoin) {
-            slot.setBackground(borderBox(Design.accent(), Design.border()));   // dapp: accent slot
+            slot.setBackground(borderBox(Design.surface(), Design.border()));
             ImageView g = new ImageView(act);
-            g.setLayoutParams(new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER));
-            g.setImageBitmap(Identicon.minima(dp(24), 0xFF000000));            // black M glyph (the coin mark)
+            g.setLayoutParams(new FrameLayout.LayoutParams(MP, MP));
+            g.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            int pad = dp(7); g.setPadding(pad, pad, pad, pad);
+            Bitmap logo = renderMinimaLogo(dp(40));                             // the real Minima mark (bundled SVG)
+            g.setImageBitmap(logo != null ? logo : Identicon.minima(dp(24), Design.accent()));
             slot.addView(g);
         } else {
             slot.setBackground(borderBox(Design.surface(), Design.border()));
@@ -187,6 +191,27 @@ public class BalancesView extends BaseView {
         return ld;
     }
 
+    /** The real Minima mark, rasterised from the bundled official SVG (native Minima carries no on-chain icon). */
+    private Bitmap renderMinimaLogo(int px) {
+        try {
+            java.io.InputStream is = act.getResources().openRawResource(R.raw.minima_icon);
+            com.caverock.androidsvg.SVG svg = com.caverock.androidsvg.SVG.getFromInputStream(is);
+            is.close();
+            float dw = svg.getDocumentWidth(), dh = svg.getDocumentHeight();
+            int w = px, h = px;
+            if (dw > 0 && dh > 0) {
+                if (dw >= dh) { w = px; h = Math.max(1, Math.round(px * dh / dw)); }
+                else { h = px; w = Math.max(1, Math.round(px * dw / dh)); }
+            }
+            svg.setDocumentWidth(w); svg.setDocumentHeight(h);
+            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            svg.renderToCanvas(new android.graphics.Canvas(bmp));
+            return bmp;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /** Full-detail dialog for one token: large icon (tap → full-res), all metadata, and a Receive action. */
     private void showTokenDetail(TokenBalance b) {
         android.widget.ScrollView sv = new android.widget.ScrollView(act);
@@ -199,8 +224,11 @@ public class BalancesView extends BaseView {
         ImageView big = new ImageView(act);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
-        if (b.isMinima()) big.setImageBitmap(Identicon.minima(dp(128), Design.accent()));
-        else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
+        if (b.isMinima()) {
+            Bitmap l = renderMinimaLogo(dp(128));
+            big.setImageBitmap(l != null ? l : Identicon.minima(dp(128), Design.accent()));
+            big.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        } else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
         box.addView(big);
         if (b.hasIcon()) {
             big.setOnClickListener(v -> showImageFull(b.meta.iconUrl));

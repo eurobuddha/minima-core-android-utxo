@@ -92,6 +92,8 @@ public class HistoryView extends BaseView {
     // ----- render (identical to the History app's list) -----
 
     private void render() {
+        root.setBackgroundColor(Design.bg());          // was showing dark in light mode
+        container.setBackgroundColor(Design.bg());
         container.removeAllViews();
         List<NodeTx> rows = act.history().loadNodeTx(CAP);
         if (rows.isEmpty()) {
@@ -121,7 +123,7 @@ public class HistoryView extends BaseView {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(8), dp(11), dp(8), dp(11));
 
-        int color = "received".equals(n.direction) ? Design.success()
+        int color = "received".equals(n.direction) ? 0xFF1EA85A          // green in / red out (both themes)
                 : "sent".equals(n.direction) ? Design.red() : Design.dim();
         String g = "received".equals(n.direction) ? "↓" : "sent".equals(n.direction) ? "↑" : "⟲";
         String sign = n.incoming ? "+" : "sent".equals(n.direction) ? "−" : "";
