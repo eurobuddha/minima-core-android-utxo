@@ -79,8 +79,9 @@ public class BalancesView extends BaseView {
             slot.setBackground(borderBox(Design.surface(), Design.border()));
             ImageView g = new ImageView(act);
             g.setLayoutParams(new FrameLayout.LayoutParams(MP, MP));
-            g.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            g.setImageResource(R.drawable.minima_coin);                        // official Minima coin icon
+            g.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            int mp = dp(8); g.setPadding(mp, mp, mp, mp);
+            g.setImageResource(R.drawable.minima_coin);                        // official Minima mark (MediaKit), loaded as-is
             slot.addView(g);
             ImageView badge = new ImageView(act);                              // native coin is the official verified coin
             int bs = dp(15);
@@ -227,7 +228,7 @@ public class BalancesView extends BaseView {
         ImageView big = new ImageView(act);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
-        if (b.isMinima()) { big.setImageResource(R.drawable.minima_coin); big.setScaleType(ImageView.ScaleType.CENTER_CROP); }
+        if (b.isMinima()) { big.setImageResource(R.drawable.minima_coin); big.setScaleType(ImageView.ScaleType.FIT_CENTER); }
         else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
         box.addView(big);
         if (b.hasIcon()) {
