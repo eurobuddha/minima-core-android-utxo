@@ -143,8 +143,9 @@ public class MainActivity extends AppCompatActivity {
             if (sel != null) { selectedCoinIds.clear(); selectedCoinIds.addAll(sel); }
             selectedTokenid = savedInstanceState.getString("sel_tok");
             ((SendView) views[TAB_SEND]).setFieldValues(savedInstanceState.getStringArray("send_fields"));
-            viewPager.setCurrentItem(savedInstanceState.getInt("cur_tab", 0), false);
-            for (BaseView v : views) v.refresh();
+            int tab = savedInstanceState.getInt("cur_tab", 0);
+            viewPager.setCurrentItem(tab, false);
+            views[tab].refresh();   // paint the restored tab now; the rest refresh on tab-select / data reload
         }
 
         // Apply the chosen design language to the shell chrome.
