@@ -76,11 +76,13 @@ public final class ImageLoader {
         }).start();
     }
 
-    /** Fetch the raw bytes then decode DOWNSAMPLED to ~reqPx, so a multi-MB icon never OOMs a thumbnail. */
+    /** Fetch the raw bytes then decode DOWNSAMPLED to ~reqPx, so a multi-MB icon never OOMs a thumbnail.
+     *  SVG (which BitmapFactory can't handle, and which many Minima token urls use) is rasterised. */
     private static Bitmap decode(String url, int reqPx) {
         try {
             byte[] bytes = url.startsWith("data:") ? dataUriBytes(url) : fetch(url);
             if (bytes == null || bytes.length == 0) return null;
+            if (looksLikeSvg(bytes, url)) return renderSvg(bytes, reqPx);
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
@@ -88,6 +90,34 @@ public final class ImageLoader {
             opt.inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, reqPx);
             return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, opt);
         } catch (Throwable t) {     // includes OutOfMemoryError — a giant icon must never crash the loader
+            return null;
+        }
+    }
+
+    private static boolean looksLikeSvg(byte[] bytes, String url) {
+        if (url != null && url.toLowerCase().contains(".svg")) return true;
+        int n = Math.min(bytes.length, 300);
+        String head = new String(bytes, 0, n, java.nio.charset.StandardCharsets.UTF_8).trim().toLowerCase();
+        return head.startsWith("<svg") || (head.startsWith("<?xml") && head.contains("<svg")) || head.contains("<svg");
+    }
+
+    /** Rasterise SVG bytes to a bitmap ≤ reqPx (preserving aspect), via AndroidSVG. */
+    private static Bitmap renderSvg(byte[] bytes, int reqPx) {
+        try {
+            com.caverock.androidsvg.SVG svg =
+                    com.caverock.androidsvg.SVG.getFromString(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+            float dw = svg.getDocumentWidth(), dh = svg.getDocumentHeight();
+            int w = reqPx, h = reqPx;
+            if (dw > 0 && dh > 0) {                     // preserve aspect if the doc declares a size
+                if (dw >= dh) { w = reqPx; h = Math.max(1, Math.round(reqPx * dh / dw)); }
+                else { h = reqPx; w = Math.max(1, Math.round(reqPx * dw / dh)); }
+            }
+            svg.setDocumentWidth(w);
+            svg.setDocumentHeight(h);
+            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            svg.renderToCanvas(new android.graphics.Canvas(bmp));
+            return bmp;
+        } catch (Throwable t) {
             return null;
         }
     }

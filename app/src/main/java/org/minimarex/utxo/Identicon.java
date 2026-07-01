@@ -69,6 +69,24 @@ public final class Identicon {
         return bmp;
     }
 
+    /** The web-validation checkmark badge: white ring, blue disc, white tick. */
+    public static Bitmap checkBadge(int px) {
+        Bitmap bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        float r = px / 2f;
+        p.setColor(0xFFFFFFFF); c.drawCircle(r, r, r, p);                             // white outline ring
+        p.setColor(0xFF2F80ED); c.drawCircle(r, r, r - Math.max(1, px * 0.09f), p);   // blue disc
+        p.setColor(0xFFFFFFFF); p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(px * 0.13f); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND);
+        Path path = new Path();
+        path.moveTo(px * 0.28f, px * 0.52f);
+        path.lineTo(px * 0.43f, px * 0.67f);
+        path.lineTo(px * 0.73f, px * 0.35f);
+        c.drawPath(path, p);
+        return bmp;
+    }
+
     /** HSL (h 0-360, s/l 0-100) → ARGB int. */
     private static int hsl(int h, int s, int l) {
         float ss = s / 100f, ll = l / 100f;

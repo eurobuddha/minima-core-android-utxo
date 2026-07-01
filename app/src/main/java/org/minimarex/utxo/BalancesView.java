@@ -75,12 +75,10 @@ public class BalancesView extends BaseView {
         slp.rightMargin = dp(12);
         slot.setLayoutParams(slp);
         if (nativeCoin) {
-            slot.setBackground(borderBox(Design.surface(), Design.border()));
+            slot.setBackground(borderBox(Design.accent(), Design.border()));   // dapp: accent slot
             ImageView g = new ImageView(act);
-            g.setLayoutParams(new FrameLayout.LayoutParams(MP, MP));
-            g.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int pad = dp(5); g.setPadding(pad, pad, pad, pad);
-            g.setImageResource(R.drawable.minima_logo);                 // the official Minima mark
+            g.setLayoutParams(new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER));
+            g.setImageBitmap(Identicon.minima(dp(24), 0xFF000000));            // black M glyph (the coin mark)
             slot.addView(g);
         } else {
             slot.setBackground(borderBox(Design.surface(), Design.border()));
@@ -90,6 +88,18 @@ public class BalancesView extends BaseView {
             icon.setImageBitmap(Identicon.forToken(b.tokenid, dp(40)));  // deterministic base
             slot.addView(icon);
             ImageLoader.loadOver(act, b.meta.iconUrl, icon, this::refresh);   // real graphic on top; re-render when it lands
+        }
+
+        // Web-validation checkmark: the token's webvalidate URL hosts its tokenid (domain-ownership proof).
+        if (!nativeCoin && notEmpty(b.meta.webvalidate)) {
+            WebValidate.ensure(act, b.tokenid, b.meta.webvalidate, this::refresh);
+            if (Boolean.TRUE.equals(WebValidate.status(b.tokenid))) {
+                ImageView badge = new ImageView(act);
+                int bs = dp(15);
+                badge.setLayoutParams(new FrameLayout.LayoutParams(bs, bs, Gravity.BOTTOM | Gravity.END));
+                badge.setImageBitmap(Identicon.checkBadge(bs));
+                slot.addView(badge);
+            }
         }
         top.addView(slot);
 
@@ -189,7 +199,7 @@ public class BalancesView extends BaseView {
         ImageView big = new ImageView(act);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
-        if (b.isMinima()) { big.setImageResource(R.drawable.minima_logo); big.setScaleType(ImageView.ScaleType.FIT_CENTER); }
+        if (b.isMinima()) big.setImageBitmap(Identicon.minima(dp(128), Design.accent()));
         else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
         box.addView(big);
         if (b.hasIcon()) {

@@ -44,5 +44,8 @@ dependencies {
     // QR code generation for the Receive screen
     implementation 'com.google.zxing:core:3.5.3'
 
+    // SVG token icons (Android's BitmapFactory can't rasterise SVG; many Minima tokens use SVG urls)
+    implementation 'com.caverock:androidsvg-aar:1.4'
+
     implementation files('libs/minimaapi.aar')
 }
