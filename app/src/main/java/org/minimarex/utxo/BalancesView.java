@@ -75,10 +75,12 @@ public class BalancesView extends BaseView {
         slp.rightMargin = dp(12);
         slot.setLayoutParams(slp);
         if (nativeCoin) {
-            slot.setBackground(borderBox(Design.accent(), Design.border()));
+            slot.setBackground(borderBox(Design.surface(), Design.border()));
             ImageView g = new ImageView(act);
-            g.setLayoutParams(new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER));
-            g.setImageBitmap(Identicon.minima(dp(24), 0xFF000000));      // black glyph on accent
+            g.setLayoutParams(new FrameLayout.LayoutParams(MP, MP));
+            g.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            int pad = dp(5); g.setPadding(pad, pad, pad, pad);
+            g.setImageResource(R.drawable.minima_logo);                 // the official Minima mark
             slot.addView(g);
         } else {
             slot.setBackground(borderBox(Design.surface(), Design.border()));
@@ -187,7 +189,7 @@ public class BalancesView extends BaseView {
         ImageView big = new ImageView(act);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
-        if (b.isMinima()) big.setImageBitmap(Identicon.minima(dp(128), Design.accent()));
+        if (b.isMinima()) { big.setImageResource(R.drawable.minima_logo); big.setScaleType(ImageView.ScaleType.FIT_CENTER); }
         else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
         box.addView(big);
         if (b.hasIcon()) {
