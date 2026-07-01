@@ -238,6 +238,7 @@ public class SendView extends BaseView {
                              final String tokenid, final String tokenName, BigDecimal total) {
         LinearLayout body = new LinearLayout(act);
         body.setOrientation(LinearLayout.VERTICAL);
+        body.setBackgroundColor(Design.bg());   // match the current theme (dialog frame is fixed; content must adapt)
         int pad = dp(18);
         body.setPadding(pad, dp(8), pad, 0);
 
