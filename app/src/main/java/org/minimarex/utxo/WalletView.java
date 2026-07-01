@@ -286,11 +286,13 @@ public class WalletView extends BaseView {
 
         amt.setText(Util.tidyAmount(c.amount) + "  " + c.tokenName);
         amt.setTextColor(Design.text());
+        amt.setTypeface(Design.typeface(), Typeface.BOLD);   // mono, matching the dapp
         cid.setText(Util.shorten(c.coinid));
         cid.setTextColor(Design.dim());
         st.setTextColor(Design.dim());
 
         boolean usable = c.confirmed && c.sendable;
+        cb.setButtonTintList(android.content.res.ColorStateList.valueOf(Design.accent()));   // correct accent, per theme
         cb.setEnabled(usable);
         cb.setChecked(act.isSelected(c.coinid));
         st.setText(!c.confirmed ? "pending" : (c.sendable ? "" : "watch"));
