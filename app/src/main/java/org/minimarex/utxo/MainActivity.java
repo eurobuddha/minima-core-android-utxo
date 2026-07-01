@@ -128,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
         // Apply the chosen design language to the shell chrome.
         root.setBackgroundColor(Design.bg());
         viewPager.setBackgroundColor(Design.bg());
-        ((TextView) findViewById(R.id.brandTitle)).setTextColor(Design.accent());
+        ((TextView) findViewById(R.id.brandTitle)).setTextColor(Design.heading());   // dapp: title is --heading, not accent
         TextView brandSub = findViewById(R.id.brandSub);
         brandSub.setTextColor(Design.dim());
         String ver;
@@ -139,8 +139,9 @@ public class MainActivity extends AppCompatActivity {
         designToggle.setText("◐ " + designTag());
         pairingBanner.setBackgroundColor(Design.accentSoft());
         tabs.setBackgroundColor(Design.bg());
-        tabs.setTabTextColors(Design.dim(), Design.accent());
+        tabs.setTabTextColors(Design.dim(), Design.heading());   // dapp: active tab text is --heading
         tabs.setSelectedTabIndicatorColor(Design.accent());
+        tabs.setSelectedTabIndicatorHeight((int) (3 * getResources().getDisplayMetrics().density));  // 3px inset bar
 
         // Construct the IPC: register reply drives the pairing banner.
         node = new NodeApi(this, enabled -> {

@@ -40,8 +40,9 @@ public final class ImageLoader {
     }
 
     /** Load ON TOP of whatever the ImageView already shows (an identicon): keeps it on failure, replaces on
-     *  success. Matches the dapp: identicon base, real graphic wins when it loads. */
-    public static void loadOver(final MainActivity act, final String url, final ImageView iv) {
+     *  success. Matches the dapp: identicon base, real graphic wins when it loads. onLoaded fires once on a
+     *  fresh successful decode (so the caller can re-render, like the dapp's renderBalances-after-resolve). */
+    public static void loadOver(final MainActivity act, final String url, final ImageView iv, final Runnable onLoaded) {
         iv.setTag(url);
         if (url == null || url.isEmpty()) return;      // keep the identicon
         String key = THUMB_PX + "|" + url;
@@ -51,7 +52,10 @@ public final class ImageLoader {
             final Bitmap b = decode(url, THUMB_PX);
             if (b == null) return;                      // keep the identicon on failure
             CACHE.put(key, b);
-            act.runOnUiThread(() -> { if (url.equals(iv.getTag())) iv.setImageBitmap(b); });
+            act.runOnUiThread(() -> {
+                if (url.equals(iv.getTag())) iv.setImageBitmap(b);
+                if (onLoaded != null) onLoaded.run();
+            });
         }).start();
     }
 

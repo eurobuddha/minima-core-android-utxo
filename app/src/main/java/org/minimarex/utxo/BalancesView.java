@@ -1,8 +1,14 @@
 package org.minimarex.utxo;
 
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import android.text.TextUtils;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -38,69 +44,135 @@ public class BalancesView extends BaseView {
             return;
         }
 
-        LayoutInflater inf = LayoutInflater.from(act);
-        for (TokenBalance b : balances) {
-            View card = inf.inflate(R.layout.view_balance_row, container, false);
-            card.setBackgroundColor(Design.surface());
+        for (TokenBalance b : balances) container.addView(buildCard(b));
+    }
 
-            // Icon: the app launcher icon for native Minima, otherwise the token's own iconUrl
-            // (async, with a placeholder while loading / on failure).
-            ImageView icon = card.findViewById(R.id.balIcon);
-            if (b.isMinima()) {
-                icon.setImageBitmap(Identicon.minima(dp(48), Design.accent()));
-            } else {
-                icon.setImageBitmap(Identicon.forToken(b.tokenid, dp(48)));  // deterministic base
-                ImageLoader.loadOver(act, b.meta.iconUrl, icon);             // real graphic on top if present
-            }
+    // ---------- one balance card, matching the utxoWallet dapp exactly (square, bordered, mono) ----------
 
-            TextView name = card.findViewById(R.id.balName);
-            name.setText(b.name); name.setTextColor(Design.accent());
+    private static final int MP = LinearLayout.LayoutParams.MATCH_PARENT;
+    private static final int WC = LinearLayout.LayoutParams.WRAP_CONTENT;
 
-            // Ticker (optional) + an NFT badge for total-1 tokens.
-            TextView ticker = card.findViewById(R.id.balTicker);
-            ticker.setTextColor(b.isNft() ? Design.accent() : Design.dim());
-            String tk = (b.meta.ticker != null && !b.meta.ticker.isEmpty()) ? "· " + b.meta.ticker : "";
-            if (b.isNft()) tk = (tk.isEmpty() ? "" : tk + "   ") + "· NFT";
-            if (!tk.isEmpty()) ticker.setText(tk); else ticker.setVisibility(View.GONE);
+    private View buildCard(TokenBalance b) {
+        boolean nativeCoin = b.isMinima();
 
-            // Front and centre: the SENDABLE (spendable) balance — NOT the token's total supply.
-            TextView total = card.findViewById(R.id.balTotal);
-            total.setText(Util.tidyAmount(b.sendable)); total.setTextColor(Design.text());
+        LinearLayout card = new LinearLayout(act);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));            // dapp: 12px V / 14px H
+        card.setBackground(nativeCoin
+                ? leftAccentBox(Design.bg(), Design.border(), Design.accent())
+                : borderBox(Design.bg(), Design.border()));
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(MP, WC);
+        clp.bottomMargin = dp(8);
+        card.setLayoutParams(clp);
 
-            // Under it: a "Sendable" caption, plus the contract-locked and pending parts when nonzero.
-            // locked = confirmed − sendable — coins held but not signable here (contract-locked / watch-only).
-            String breakdown = "Sendable";
-            String locked = lockedAmount(b);
-            if (positive(locked)) breakdown += "  ·  Locked " + Util.tidyAmount(locked);
-            if (positive(b.unconfirmed)) breakdown += "  ·  Pending " + Util.tidyAmount(b.unconfirmed);
-            TextView bd = card.findViewById(R.id.balBreakdown);
-            bd.setText(breakdown); bd.setTextColor(Design.dim());
+        // top row: [40dp icon] [symbol/name] [amount/count →]
+        LinearLayout top = new LinearLayout(act);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
 
-            // Small print: UTXO count, declared decimals, and the SUPPLY (demoted from headline). For Minima
-            // use the LIVE circulating amount (status.minima = 1bn − burnt) as a whole number, no decimals;
-            // for tokens, their fixed total supply.
-            String meta = b.coins + (b.coins == 1 ? " coin" : " coins");
-            if (b.meta.decimals != null && !b.meta.decimals.isEmpty()) meta += "  ·  " + b.meta.decimals + " decimals";
-            String supply = (Util.isMinima(b.tokenid) && !act.circulatingSupply().isEmpty())
-                    ? wholeNumber(act.circulatingSupply()) : Util.tidyAmount(b.total);
-            meta += "  ·  Supply " + supply;
-            TextView mt = card.findViewById(R.id.balMeta);
-            mt.setText(meta); mt.setTextColor(Design.dim());
-
-            TextView tid = card.findViewById(R.id.balTokenId);
-            tid.setText(b.tokenid); tid.setTextColor(Design.dim());
-
-            // Description is optional free-text metadata — only revealed when present.
-            TextView desc = card.findViewById(R.id.balDesc);
-            desc.setTextColor(Design.dim());
-            if (b.meta.description != null && !b.meta.description.isEmpty()) {
-                desc.setVisibility(View.VISIBLE);
-                desc.setText(b.meta.description);
-            }
-
-            card.setOnClickListener(v -> showTokenDetail(b));   // tap → full detail
-            container.addView(card);
+        FrameLayout slot = new FrameLayout(act);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(dp(40), dp(40));
+        slp.rightMargin = dp(12);
+        slot.setLayoutParams(slp);
+        if (nativeCoin) {
+            slot.setBackground(borderBox(Design.accent(), Design.border()));
+            ImageView g = new ImageView(act);
+            g.setLayoutParams(new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER));
+            g.setImageBitmap(Identicon.minima(dp(24), 0xFF000000));      // black glyph on accent
+            slot.addView(g);
+        } else {
+            slot.setBackground(borderBox(Design.surface(), Design.border()));
+            ImageView icon = new ImageView(act);
+            icon.setLayoutParams(new FrameLayout.LayoutParams(MP, MP));
+            icon.setScaleType(ImageView.ScaleType.CENTER_CROP);          // object-fit: cover
+            icon.setImageBitmap(Identicon.forToken(b.tokenid, dp(40)));  // deterministic base
+            slot.addView(icon);
+            ImageLoader.loadOver(act, b.meta.iconUrl, icon, this::refresh);   // real graphic on top; re-render when it lands
         }
+        top.addView(slot);
+
+        LinearLayout ident = new LinearLayout(act);
+        ident.setOrientation(LinearLayout.VERTICAL);
+        String symbol = notEmpty(b.meta.ticker) ? b.meta.ticker : b.name;
+        TextView sym = mono(symbol.toUpperCase(), 13f, Design.heading(), true);
+        sym.setLetterSpacing(0.115f); sym.setMaxLines(1); sym.setEllipsize(TextUtils.TruncateAt.END);
+        ident.addView(sym);
+        String secondary = (notEmpty(b.name) && !b.name.equalsIgnoreCase(symbol)) ? b.name : null;
+        if (b.isNft()) secondary = (secondary == null ? "NFT" : secondary + "  ·  NFT");
+        if (secondary != null) {
+            TextView nm = mono(secondary, 11f, b.isNft() ? Design.accent() : Design.dim(), false);
+            nm.setMaxLines(1); nm.setEllipsize(TextUtils.TruncateAt.END); nm.setPadding(0, dp(2), 0, 0);
+            ident.addView(nm);
+        }
+        top.addView(ident, new LinearLayout.LayoutParams(0, WC, 1f));
+
+        LinearLayout amtCol = new LinearLayout(act);
+        amtCol.setOrientation(LinearLayout.VERTICAL);
+        amtCol.setGravity(Gravity.END);
+        TextView amt = mono(Util.tidyAmount(b.sendable), 17f, Design.heading(), true);
+        amt.setGravity(Gravity.END);
+        amtCol.addView(amt);
+        TextView cnt = mono((b.coins + (b.coins == 1 ? " coin" : " coins")).toUpperCase(), 10f, Design.dim(), false);
+        cnt.setLetterSpacing(0.04f); cnt.setGravity(Gravity.END); cnt.setPadding(0, dp(3), 0, 0);
+        amtCol.addView(cnt);
+        top.addView(amtCol, new LinearLayout.LayoutParams(WC, WC));
+
+        card.addView(top);
+
+        // sendable / locked / pending split (only when there's a locked or pending part)
+        String locked = lockedAmount(b);
+        if (positive(locked) || positive(b.unconfirmed)) {
+            card.addView(divider());
+            card.addView(splitRow("SENDABLE", Util.tidyAmount(b.sendable), Design.accent()));
+            if (positive(locked)) card.addView(splitRow("LOCKED", Util.tidyAmount(locked), Design.dim()));
+            if (positive(b.unconfirmed)) card.addView(splitRow("PENDING", Util.tidyAmount(b.unconfirmed), Design.dim()));
+        }
+
+        card.setOnClickListener(v -> showTokenDetail(b));
+        return card;
+    }
+
+    private TextView mono(String s, float sp, int color, boolean bold) {
+        TextView t = new TextView(act);
+        t.setText(s); t.setTextColor(color); t.setTextSize(sp);
+        t.setTypeface(Design.typeface(), bold ? Typeface.BOLD : Typeface.NORMAL);
+        return t;
+    }
+
+    private View divider() {
+        View v = new View(act);
+        v.setBackgroundColor(Design.border());
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(MP, Math.max(1, dp(1)));
+        lp.topMargin = dp(10); lp.bottomMargin = dp(8);
+        v.setLayoutParams(lp);
+        return v;
+    }
+
+    private View splitRow(String label, String value, int labelColor) {
+        LinearLayout r = new LinearLayout(act);
+        r.setOrientation(LinearLayout.HORIZONTAL); r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(0, dp(2), 0, dp(2));
+        TextView l = mono(label, 10f, labelColor, true); l.setLetterSpacing(0.08f);
+        TextView val = mono(value, 13f, Design.heading(), true); val.setGravity(Gravity.END);
+        r.addView(l, new LinearLayout.LayoutParams(0, WC, 1f));
+        r.addView(val, new LinearLayout.LayoutParams(0, WC, 1f));
+        return r;
+    }
+
+    /** Square, filled, 1px-bordered box (radius 0) — the dapp's card/slot look. */
+    private GradientDrawable borderBox(int bg, int border) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(bg);
+        d.setStroke(Math.max(1, dp(1)), border);
+        return d;
+    }
+
+    /** Same, plus a 3dp accent left rule (the .bal-card.native marker for the Minima coin). */
+    private Drawable leftAccentBox(int bg, int border, int accent) {
+        LayerDrawable ld = new LayerDrawable(new Drawable[]{ borderBox(bg, border), new ColorDrawable(accent) });
+        ld.setLayerGravity(1, Gravity.LEFT);
+        ld.setLayerWidth(1, dp(3));
+        return ld;
     }
 
     /** Full-detail dialog for one token: large icon (tap → full-res), all metadata, and a Receive action. */
@@ -116,7 +188,7 @@ public class BalancesView extends BaseView {
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(128), dp(128));
         ip.gravity = Gravity.CENTER_HORIZONTAL; ip.bottomMargin = dp(6); big.setLayoutParams(ip);
         if (b.isMinima()) big.setImageBitmap(Identicon.minima(dp(128), Design.accent()));
-        else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big); }
+        else { big.setImageBitmap(Identicon.forToken(b.tokenid, dp(128))); ImageLoader.loadOver(act, b.meta.iconUrl, big, null); }
         box.addView(big);
         if (b.hasIcon()) {
             big.setOnClickListener(v -> showImageFull(b.meta.iconUrl));
