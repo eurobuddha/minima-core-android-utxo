@@ -73,6 +73,15 @@ public class MainActivity extends AppCompatActivity {
     private String selectedTokenid = null;
 
     @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putStringArrayList("sel_ids", new ArrayList<>(selectedCoinIds));
+        if (selectedTokenid != null) out.putString("sel_tok", selectedTokenid);
+        if (views != null) out.putStringArray("send_fields", ((SendView) views[TAB_SEND]).fieldValues());
+        if (viewPager != null) out.putInt("cur_tab", viewPager.getCurrentItem());
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Design.load(this);                 // must precede view construction (views read Design)
@@ -84,7 +93,10 @@ public class MainActivity extends AppCompatActivity {
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             androidx.core.graphics.Insets bars =
                     insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars());
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            androidx.core.graphics.Insets ime =
+                    insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime());
+            // Pad up by the keyboard when it's open so the Send fields sit above it (the ScrollView then scrolls).
+            v.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom));
             return insets;
         });
 
@@ -124,6 +136,16 @@ public class MainActivity extends AppCompatActivity {
                 views[tab.getPosition()].onShown();
             }
         });
+
+        // The theme toggle uses recreate(); restore selection, typed Send fields, and the open tab across it.
+        if (savedInstanceState != null) {
+            java.util.ArrayList<String> sel = savedInstanceState.getStringArrayList("sel_ids");
+            if (sel != null) { selectedCoinIds.clear(); selectedCoinIds.addAll(sel); }
+            selectedTokenid = savedInstanceState.getString("sel_tok");
+            ((SendView) views[TAB_SEND]).setFieldValues(savedInstanceState.getStringArray("send_fields"));
+            viewPager.setCurrentItem(savedInstanceState.getInt("cur_tab", 0), false);
+            for (BaseView v : views) v.refresh();
+        }
 
         // Apply the chosen design language to the shell chrome.
         root.setBackgroundColor(Design.bg());

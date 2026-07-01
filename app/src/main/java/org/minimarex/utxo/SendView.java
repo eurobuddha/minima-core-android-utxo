@@ -116,6 +116,19 @@ public class SendView extends BaseView {
         prefillChangeIfNeeded();
     }
 
+    /** Snapshot the typed fields (recipient, amount, change, burn) — used to survive a theme recreate(). */
+    public String[] fieldValues() {
+        return new String[]{ addrInput.getText().toString(), amountInput.getText().toString(),
+                changeInput.getText().toString(), burnInput.getText().toString() };
+    }
+
+    /** Restore a fieldValues() snapshot after recreate(). */
+    public void setFieldValues(String[] v) {
+        if (v == null || v.length < 4) return;
+        addrInput.setText(v[0]); amountInput.setText(v[1]);
+        changeInput.setText(v[2]); burnInput.setText(v[3]);
+    }
+
     // ----- field helpers -----
 
     /** Fills the amount with the full spendable total; for Minima sends the burn is reserved first. */
