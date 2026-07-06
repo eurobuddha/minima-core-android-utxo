@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'org.minimarex.utxo'
+    namespace 'com.eurobuddha.utxo'
     compileSdk 36
 
     defaultConfig {
-        applicationId "org.minimarex.utxo"
+        applicationId "com.eurobuddha.utxo"
         minSdk 28
         targetSdk 35
         versionCode 321

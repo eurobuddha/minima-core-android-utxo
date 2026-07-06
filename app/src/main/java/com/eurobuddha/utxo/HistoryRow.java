@@ -1,4 +1,4 @@
-package org.minimarex.utxo;
+package com.eurobuddha.utxo;
 
 /** A local record of a transaction this wallet posted. Persisted in {@link HistoryDb}. */
 public class HistoryRow {

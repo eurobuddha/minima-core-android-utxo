@@ -1,4 +1,4 @@
-package org.minimarex.utxo;
+package com.eurobuddha.utxo;
 
 import android.app.Activity;
 import android.content.Context;

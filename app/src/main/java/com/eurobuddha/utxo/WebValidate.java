@@ -1,4 +1,4 @@
-package org.minimarex.utxo;
+package com.eurobuddha.utxo;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;

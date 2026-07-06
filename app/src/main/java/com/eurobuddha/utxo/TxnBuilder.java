@@ -1,4 +1,4 @@
-package org.minimarex.utxo;
+package com.eurobuddha.utxo;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

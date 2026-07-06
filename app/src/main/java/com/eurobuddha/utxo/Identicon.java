@@ -1,4 +1,4 @@
-package org.minimarex.utxo;
+package com.eurobuddha.utxo;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
