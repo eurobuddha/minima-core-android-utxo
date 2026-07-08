@@ -136,12 +136,13 @@ public class HistoryView extends BaseView {
         mid.setOrientation(LinearLayout.VERTICAL);
         mid.setPadding(dp(6), 0, dp(6), 0);
         mid.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        boolean reshuffle = n.isReshuffle();
         TextView line1 = new TextView(act);
-        line1.setText(sign + Util.tidyAmount(n.amount) + "  " + n.tokenName);
+        line1.setText(reshuffle ? n.grossDisplay() : (sign + Util.tidyAmount(n.amount) + "  " + n.tokenName));
         line1.setTextColor(color); line1.setTextSize(15f); line1.setTypeface(Typeface.DEFAULT_BOLD);
         TextView line2 = new TextView(act);
         String cp = (n.counterparty == null || n.counterparty.isEmpty()) ? "" : Util.shorten(n.counterparty) + "  ·  ";
-        line2.setText(cp + relative(n.timemilli));
+        line2.setText((reshuffle ? n.reshuffleLabel() + "  ·  " : cp) + relative(n.timemilli));
         line2.setTextColor(Design.dim()); line2.setTextSize(12f);
         mid.addView(line1); mid.addView(line2);
         row.addView(mid);
