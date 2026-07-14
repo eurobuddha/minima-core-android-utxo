@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     private final List<TokenBalance> balances = new ArrayList<>();
     // All of my wallet addresses (incl. zero-balance): each entry is {hexAddress, miniAddress}.
     private final List<String[]> myAddresses = new ArrayList<>();
+    private final Set<String> myKeys = new HashSet<>();   // this node's public keys (for classifying own simple addresses)
     private String defaultMiniAddress = "";
     private int chainBlock = 0;
     private int lastScriptsBlock = -1;                 // throttle the ~27 KB scripts fetch
@@ -315,6 +316,28 @@ public class MainActivity extends AppCompatActivity {
     private void maybeRefreshScripts() {
         if (!myAddresses.isEmpty() && chainBlock - lastScriptsBlock < SCRIPTS_EVERY) return;
         lastScriptsBlock = chainBlock;
+        // Fetch this node's public keys first, so we can recognise our OWN simple single-key addresses that
+        // aren't in the default-64 pool (e.g. a newaddress-minted address like a PandaPools pool payout $OADR)
+        // and NOT mislabel them "CONTRACT". Keys are small + stable; refreshed on the same ~20-block cadence.
+        node.cmd("keys", new NodeApi.Cb() {
+            @Override public void onResult(JSONObject kj) { collectKeys(kj); loadScripts(); }
+            @Override public void onError(String m) { loadScripts(); }   // no keys → fall back to default-only classification
+        });
+    }
+
+    private void collectKeys(JSONObject kj) {
+        myKeys.clear();
+        Object resp = kj.opt("response");
+        JSONArray arr = null;
+        if (resp instanceof JSONArray) arr = (JSONArray) resp;
+        else if (resp instanceof JSONObject) arr = ((JSONObject) resp).optJSONArray("keys");
+        if (arr != null) for (int i = 0; i < arr.length(); i++) {
+            JSONObject k = arr.optJSONObject(i);
+            if (k != null) { String pk = k.optString("publickey", ""); if (!pk.isEmpty()) myKeys.add(pk.toLowerCase()); }
+        }
+    }
+
+    private void loadScripts() {
         node.cmd("scripts", new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
                 myAddresses.clear();
@@ -326,8 +349,13 @@ public class MainActivity extends AppCompatActivity {
                         if (s == null) continue;
                         String hex = s.optString("address", "");
                         String mini = s.optString("miniaddress", hex);
-                        // A script entry is one of the wallet's own default addresses iff default==true.
-                        boolean wallet = s.optBoolean("default", false);
+                        // A wallet address = a default address, OR a simple single-key address whose key is OURS
+                        // (the node holds it, e.g. a newaddress-minted $OADR). Both are fully spendable by this
+                        // node, so neither should be flagged "CONTRACT". A covenant is not simple (publickey 0x00),
+                        // so it stays classified as a contract.
+                        String pk = s.optString("publickey", "").toLowerCase();
+                        boolean wallet = s.optBoolean("default", false)
+                                || (s.optBoolean("simple", false) && !pk.isEmpty() && myKeys.contains(pk));
                         if (!hex.isEmpty() && wallet && seen.add(hex)) {
                             myAddresses.add(new String[]{hex, mini});
                         }
