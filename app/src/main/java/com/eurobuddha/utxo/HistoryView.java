@@ -166,8 +166,9 @@ public class HistoryView extends BaseView {
         kv(box, "Block", String.valueOf(n.block));
         kv(box, "Time", new SimpleDateFormat("dd MMM yyyy  HH:mm:ss", Locale.ENGLISH).format(new Date(n.timemilli)));
         copyRow(box, "Txpow id", n.txpowid);
+        if (!Util.isMinima(n.tokenid)) copyRow(box, "Tokenid", n.tokenid);
         if (n.counterparty != null && !n.counterparty.isEmpty()) copyRow(box, n.incoming ? "From" : "To", n.counterparty);
-        kv(box, "Per-token effect", prettyDeltas(n.deltas));
+        addDeltas(box, n.deltas);
         addBreakdown(box, "Inputs", n.inputs);
         addBreakdown(box, "Outputs", n.outputs);
         ScrollView sv = new ScrollView(act);
@@ -179,13 +180,17 @@ public class HistoryView extends BaseView {
         TextView t = new TextView(act);
         t.setText(k + ":  " + v);
         t.setTextColor(Design.text()); t.setTextSize(13f); t.setPadding(0, dp(4), 0, dp(4));
+        t.setTextIsSelectable(true);
         p.addView(t);
     }
 
-    private void copyRow(LinearLayout p, String k, final String v) {
+    private void copyRow(LinearLayout p, String k, final String v) { copyRow(p, k, v, 0); }
+
+    /** Full value, never shortened; the whole row taps to copy the complete value. */
+    private void copyRow(LinearLayout p, String k, final String v, int indentDp) {
         TextView t = new TextView(act);
         t.setText(k + ":  " + v + "   (tap to copy)");
-        t.setTextColor(Design.dim()); t.setTextSize(12f); t.setTypeface(Typeface.MONOSPACE); t.setPadding(0, dp(4), 0, dp(4));
+        t.setTextColor(Design.dim()); t.setTextSize(12f); t.setTypeface(Typeface.MONOSPACE); t.setPadding(dp(indentDp), dp(4), 0, dp(4));
         t.setOnClickListener(view -> {
             ((ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText(k, v));
             Toast.makeText(act, "Copied", Toast.LENGTH_SHORT).show();
@@ -193,38 +198,49 @@ public class HistoryView extends BaseView {
         p.addView(t);
     }
 
+    private void sectionHeader(LinearLayout p, String title) {
+        TextView h = new TextView(act);
+        h.setText(title);
+        h.setTextColor(Design.accent()); h.setTextSize(12f); h.setTypeface(Typeface.DEFAULT_BOLD); h.setPadding(0, dp(8), 0, dp(2));
+        p.addView(h);
+    }
+
+    private void bullet(LinearLayout p, String text) {
+        TextView t = new TextView(act);
+        t.setText(text);
+        t.setTextColor(Design.text()); t.setTextSize(12f); t.setPadding(dp(6), dp(4), 0, 0);
+        t.setTextIsSelectable(true);
+        p.addView(t);
+    }
+
     private void addBreakdown(LinearLayout p, String title, String json) {
         try {
             JSONArray a = new JSONArray(json);
             if (a.length() == 0) return;
-            TextView h = new TextView(act);
-            h.setText(title);
-            h.setTextColor(Design.accent()); h.setTextSize(12f); h.setTypeface(Typeface.DEFAULT_BOLD); h.setPadding(0, dp(8), 0, dp(2));
-            p.addView(h);
+            sectionHeader(p, title);
             for (int i = 0; i < a.length(); i++) {
                 JSONObject c = a.optJSONObject(i);
                 if (c == null) continue;
                 String tid = c.optString("tokenid", "0x00");
-                String tok = Util.isMinima(tid) ? "Minima" : Util.shorten(tid);
-                TextView t = new TextView(act);
-                t.setText("• " + Util.tidyAmount(c.optString("amount", "")) + " " + tok + "  →  " + Util.shorten(c.optString("addr", "")));
-                t.setTextColor(Design.dim()); t.setTextSize(12f); t.setPadding(dp(6), dp(1), 0, dp(1));
-                p.addView(t);
+                bullet(p, "• " + Util.tidyAmount(c.optString("amount", "")) + (Util.isMinima(tid) ? "  Minima" : ""));
+                if (!Util.isMinima(tid)) copyRow(p, "token", tid, 14);
+                copyRow(p, "addr", c.optString("addr", ""), 14);
             }
         } catch (Exception ignored) {}
     }
 
-    private String prettyDeltas(String json) {
+    /** Per-token net effect — one entry per token, full tokenid shown and copyable. */
+    private void addDeltas(LinearLayout p, String json) {
         try {
             JSONObject o = new JSONObject(json);
-            StringBuilder sb = new StringBuilder();
+            if (o.length() == 0) { kv(p, "Per-token effect", "—"); return; }
+            sectionHeader(p, "Per-token effect");
             for (Iterator<String> it = o.keys(); it.hasNext(); ) {
                 String tid = it.next();
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(Util.tidyAmount(o.optString(tid, ""))).append(" ").append(Util.isMinima(tid) ? "Minima" : Util.shorten(tid));
+                bullet(p, "• " + Util.tidyAmount(o.optString(tid, "")) + (Util.isMinima(tid) ? "  Minima" : ""));
+                if (!Util.isMinima(tid)) copyRow(p, "token", tid, 14);
             }
-            return sb.length() > 0 ? sb.toString() : "—";
-        } catch (Exception e) { return "—"; }
+        } catch (Exception e) { kv(p, "Per-token effect", "—"); }
     }
 
     private static String relative(long ms) {
