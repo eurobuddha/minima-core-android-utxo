@@ -1,7 +1,7 @@
 {
   "app/build.gradle": {
-    "mtime": 1786273883.7838633,
-    "ast_hash": "093dc78c9dc1de65ff27940f91c4cdb6",
+    "mtime": 1786296021.0140345,
+    "ast_hash": "6168958041b0095659c5e21b148c3a8c",
     "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/BalancesView.java": {
@@ -65,9 +65,9 @@
     "semantic_hash": "a27f3a6c6ae7de9e1564bcfd094718c4"
   },
   "app/src/main/java/com/eurobuddha/utxo/MainActivity.java": {
-    "mtime": 1784023884.325361,
-    "ast_hash": "5a03b0fdc089b86757b846ed63a6efac",
-    "semantic_hash": "5a03b0fdc089b86757b846ed63a6efac"
+    "mtime": 1786294605.9385543,
+    "ast_hash": "35372b69e39a62c352eda63b0030756c",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/MainPager.java": {
     "mtime": 1783341955.7895043,
@@ -75,9 +75,9 @@
     "semantic_hash": "8e6741e957e6c15028febbd62295d2f8"
   },
   "app/src/main/java/com/eurobuddha/utxo/NodeApi.java": {
-    "mtime": 1783341955.787666,
-    "ast_hash": "b3e7cb385a68adbe6184169ec9f53af3",
-    "semantic_hash": "b3e7cb385a68adbe6184169ec9f53af3"
+    "mtime": 1786294599.0172858,
+    "ast_hash": "5b2df6708579de3b45e8489e6c2eee90",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/NodeTx.java": {
     "mtime": 1783526700.6583288,

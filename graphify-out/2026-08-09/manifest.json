@@ -1,7 +1,7 @@
 {
   "app/build.gradle": {
-    "mtime": 1786003592.0004256,
-    "ast_hash": "d7b6dc0568fe7322d0810bd3b9adb426",
+    "mtime": 1786273883.7838633,
+    "ast_hash": "093dc78c9dc1de65ff27940f91c4cdb6",
     "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/BalancesView.java": {

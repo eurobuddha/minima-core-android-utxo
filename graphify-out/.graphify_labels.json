@@ -1,12 +1,12 @@
 {
   "0": "Design",
-  "1": "WalletTools",
+  "1": "Coin",
   "2": "TxnBuilder",
   "3": "HistoryView",
   "4": ".buildCard",
   "5": "SendView",
   "6": "MainActivity",
-  "7": "Coin",
+  "7": "DistributeManager",
   "8": "ImageLoader",
   "9": "BaseView",
   "10": "HistoryDb",
@@ -19,5 +19,11 @@
   "17": "settings.gradle",
   "18": "LinearLayout",
   "19": "Override",
-  "20": "View"
+  "20": "View",
+  "21": "NodeTx",
+  "22": "ReceiveView",
+  "23": "Override",
+  "24": "TextView",
+  "25": "View",
+  "26": "Context"
 }
