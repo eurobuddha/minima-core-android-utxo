@@ -1,0 +1,207 @@
+{
+  "app/build.gradle": {
+    "mtime": 1786003592.0004256,
+    "ast_hash": "d7b6dc0568fe7322d0810bd3b9adb426",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/eurobuddha/utxo/BalancesView.java": {
+    "mtime": 1783341955.7711437,
+    "ast_hash": "3546628580ce0b1ef3cfb8b4866dd101",
+    "semantic_hash": "3546628580ce0b1ef3cfb8b4866dd101"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/BaseView.java": {
+    "mtime": 1783341955.7788222,
+    "ast_hash": "bd616814d1acbe9d90bf8b80246fd7d6",
+    "semantic_hash": "bd616814d1acbe9d90bf8b80246fd7d6"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/Coin.java": {
+    "mtime": 1783341955.7684233,
+    "ast_hash": "aba565f0eb59aa49d7dc3ff4419561d2",
+    "semantic_hash": "aba565f0eb59aa49d7dc3ff4419561d2"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/Design.java": {
+    "mtime": 1783341955.7697496,
+    "ast_hash": "2af9ebec1b5110167f700db278bd670d",
+    "semantic_hash": "2af9ebec1b5110167f700db278bd670d"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/DistributeJob.java": {
+    "mtime": 1783341955.7852921,
+    "ast_hash": "af8fd6fa149fbb9e138e0c9e5b09d8de",
+    "semantic_hash": "af8fd6fa149fbb9e138e0c9e5b09d8de"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/DistributeManager.java": {
+    "mtime": 1783341955.781538,
+    "ast_hash": "d8ec388897df029d8dda20ef5ccdac13",
+    "semantic_hash": "d8ec388897df029d8dda20ef5ccdac13"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/HistoryDb.java": {
+    "mtime": 1783341955.7857141,
+    "ast_hash": "9f6a891220fc7c22f31972c66f9e2a46",
+    "semantic_hash": "9f6a891220fc7c22f31972c66f9e2a46"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/HistoryRow.java": {
+    "mtime": 1783341955.78885,
+    "ast_hash": "30c2632b75aa26938f6465c32172dfd2",
+    "semantic_hash": "30c2632b75aa26938f6465c32172dfd2"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/HistoryView.java": {
+    "mtime": 1786003458.9004486,
+    "ast_hash": "a0c0cbb931e52053433e5ba3fda3bb5f",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/eurobuddha/utxo/IconResolver.java": {
+    "mtime": 1783341955.7843473,
+    "ast_hash": "58caf3693084c81947cf95b3e2dc6b07",
+    "semantic_hash": "58caf3693084c81947cf95b3e2dc6b07"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/Identicon.java": {
+    "mtime": 1783341955.7807026,
+    "ast_hash": "88d02e2c4282e0f97468c6a83873ca26",
+    "semantic_hash": "88d02e2c4282e0f97468c6a83873ca26"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/ImageLoader.java": {
+    "mtime": 1783341955.789851,
+    "ast_hash": "a27f3a6c6ae7de9e1564bcfd094718c4",
+    "semantic_hash": "a27f3a6c6ae7de9e1564bcfd094718c4"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/MainActivity.java": {
+    "mtime": 1784023884.325361,
+    "ast_hash": "5a03b0fdc089b86757b846ed63a6efac",
+    "semantic_hash": "5a03b0fdc089b86757b846ed63a6efac"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/MainPager.java": {
+    "mtime": 1783341955.7895043,
+    "ast_hash": "8e6741e957e6c15028febbd62295d2f8",
+    "semantic_hash": "8e6741e957e6c15028febbd62295d2f8"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/NodeApi.java": {
+    "mtime": 1783341955.787666,
+    "ast_hash": "b3e7cb385a68adbe6184169ec9f53af3",
+    "semantic_hash": "b3e7cb385a68adbe6184169ec9f53af3"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/NodeTx.java": {
+    "mtime": 1783526700.6583288,
+    "ast_hash": "f951301683e32f4a448ec50f51425a1b",
+    "semantic_hash": "f951301683e32f4a448ec50f51425a1b"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/ReceiveView.java": {
+    "mtime": 1783341955.7903373,
+    "ast_hash": "d6349e75f290467a6370f2e2c17ed343",
+    "semantic_hash": "d6349e75f290467a6370f2e2c17ed343"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/SendView.java": {
+    "mtime": 1783341955.7881966,
+    "ast_hash": "605593f9a2f03f1ca8e63d5ceda4798c",
+    "semantic_hash": "605593f9a2f03f1ca8e63d5ceda4798c"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/TokenBalance.java": {
+    "mtime": 1783341955.7871597,
+    "ast_hash": "0c63573c5e8ea71395e26214305ca9ae",
+    "semantic_hash": "0c63573c5e8ea71395e26214305ca9ae"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/TokenMeta.java": {
+    "mtime": 1783341955.7761674,
+    "ast_hash": "7a7cea9ba9fa793b61404a406a4642af",
+    "semantic_hash": "7a7cea9ba9fa793b61404a406a4642af"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/TxnBuilder.java": {
+    "mtime": 1783341955.7864974,
+    "ast_hash": "07384f076bfbe5016f3c229e663e368b",
+    "semantic_hash": "07384f076bfbe5016f3c229e663e368b"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/TxnUtil.java": {
+    "mtime": 1783341955.78387,
+    "ast_hash": "dd971b523c8bde78ad4aee9fece95911",
+    "semantic_hash": "dd971b523c8bde78ad4aee9fece95911"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/Util.java": {
+    "mtime": 1783341955.7783408,
+    "ast_hash": "bea30c0f2df5df37d0f373c6ac8e7fa5",
+    "semantic_hash": "bea30c0f2df5df37d0f373c6ac8e7fa5"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/WalletTools.java": {
+    "mtime": 1783341955.783325,
+    "ast_hash": "1e2d8af65d21dcbcacfd0b1a3b70b432",
+    "semantic_hash": "1e2d8af65d21dcbcacfd0b1a3b70b432"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/WalletView.java": {
+    "mtime": 1783341955.779511,
+    "ast_hash": "74569e929b53c4bb28e841814692075a",
+    "semantic_hash": "74569e929b53c4bb28e841814692075a"
+  },
+  "app/src/main/java/com/eurobuddha/utxo/WebValidate.java": {
+    "mtime": 1783341955.767979,
+    "ast_hash": "7687d83301002552301a95c023e6dbd4",
+    "semantic_hash": "7687d83301002552301a95c023e6dbd4"
+  },
+  "build.gradle": {
+    "mtime": 1782212552.0,
+    "ast_hash": "583193a3771192898c84ddef2d926224",
+    "semantic_hash": "583193a3771192898c84ddef2d926224"
+  },
+  "gradlew": {
+    "mtime": 1782212552.0,
+    "ast_hash": "02c16663c6f0aa37f98d94d698c22b8c",
+    "semantic_hash": "02c16663c6f0aa37f98d94d698c22b8c"
+  },
+  "settings.gradle": {
+    "mtime": 1782232218.70563,
+    "ast_hash": "4ab1b50726563c630f986a494e760941",
+    "semantic_hash": "4ab1b50726563c630f986a494e760941"
+  },
+  "CLAUDE.md": {
+    "mtime": 1784124679.0795376,
+    "ast_hash": "4439d09bc81851d89f9ffcecc4136dcf",
+    "semantic_hash": ""
+  },
+  "DESIGN_MAP.md": {
+    "mtime": 1782292073.2960722,
+    "ast_hash": "14fc5f67a96dbc38bf2129353764c4a2",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1782402086.0603082,
+    "ast_hash": "60bad512cb814c71cc4c6cf1e9d6e190",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/minima_coin.png": {
+    "mtime": 1782910364.71515,
+    "ast_hash": "b42a00a97985ae43dc75340e887b85c2",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/minima_logo.png": {
+    "mtime": 1782891719.5405118,
+    "ast_hash": "6976cdf6379c575ff396965d8c79bae4",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png": {
+    "mtime": 1782864434.3202415,
+    "ast_hash": "2c9737d4f912a1f8476a4e408ed8df68",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png": {
+    "mtime": 1782864434.319445,
+    "ast_hash": "178b630bb3b6c6e0ea2ffc4b38648a79",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png": {
+    "mtime": 1782864434.3215706,
+    "ast_hash": "d75267b0727bf4ccd4133e1646faf96e",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png": {
+    "mtime": 1782864434.3240263,
+    "ast_hash": "84b6fd2f44142db9739322b1e45987ef",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png": {
+    "mtime": 1782864434.3277264,
+    "ast_hash": "171bc4320ad34791f91054d5b2835cb7",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/raw/minima_icon.svg": {
+    "mtime": 1782899815.1718435,
+    "ast_hash": "df87d6ade37210e92ec34cf658a62940",
+    "semantic_hash": ""
+  }
+}
