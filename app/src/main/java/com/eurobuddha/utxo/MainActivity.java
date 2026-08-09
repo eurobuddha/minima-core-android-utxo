@@ -245,13 +245,16 @@ public class MainActivity extends AppCompatActivity {
         node.cmd("coins relevant:true", new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
                 setPaired(true);
-                coins.clear();
                 JSONArray arr = json.optJSONArray("response");
-                if (arr != null) {
-                    for (int i = 0; i < arr.length(); i++) {
-                        JSONObject c = arr.optJSONObject(i);
-                        if (c != null) coins.add(Coin.from(c));
-                    }
+                if (arr == null) {
+                    // Malformed/stub reply — keep the coins we have rather than painting an empty wallet.
+                    handleErr("Coin list unavailable — the node returned an invalid reply.");
+                    return;
+                }
+                coins.clear();
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject c = arr.optJSONObject(i);
+                    if (c != null) coins.add(Coin.from(c));
                 }
                 // then the sendable subset
                 node.cmd("coins relevant:true sendable:true", new NodeApi.Cb() {

@@ -108,6 +108,15 @@ public class NodeApi {
                         if (cb != null) cb.onError(ERR_NOT_ENABLED);
                         return;
                     }
+                    // A pre-file-transport node (< 1.3.0-ui-h2) answers an oversized reply with the
+                    // {"status":false,"response":"Result too long! MAX(256000)"} stub instead of the
+                    // content:// hand-off — surface it as an error, never as an empty result.
+                    Object resp = zResponse.opt("response");
+                    if (!zResponse.optBoolean("status", true) && resp instanceof String
+                            && ((String) resp).contains("too long")) {
+                        if (cb != null) cb.onError("Node reply exceeded the IPC limit — update Minima Core (needs 1.3.0+).");
+                        return;
+                    }
                     if (cb != null) cb.onResult(zResponse);
                 });
             }
