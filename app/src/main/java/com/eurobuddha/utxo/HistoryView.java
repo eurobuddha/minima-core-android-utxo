@@ -35,10 +35,14 @@ public class HistoryView extends BaseView {
     private static final String EXPLORER_TX = "https://explorer.minima.global/transactions/";
 
     private final LinearLayout container;
-    private int pageMax = 8;                    // adaptive page size — shrinks under the 256 KB cap
+    private static final int PAGE_MAX = 8;      // node page size ceiling
+    private static final int SHOW_STEP = 60;    // rows rendered per "Show more" (render cost, not fetch)
+    private int pageMax = PAGE_MAX;             // adaptive page size — shrinks ONLY under the 256 KB cap
+    private int shrunkAtBlock = -1;             // block at which pageMax last shrank (recovery is tried on a later block)
     private boolean fetching = false;
     private int lastFetchBlock = -1;
     private boolean moreAvailable = false;
+    private int shown = SHOW_STEP;              // how many persisted rows are currently rendered
 
     public HistoryView(MainActivity a) {
         super(a, R.layout.view_history);
@@ -54,6 +58,9 @@ public class HistoryView extends BaseView {
     private void fetch(boolean force) {
         if (fetching) return;
         if (!force && act.chainBlock() <= lastFetchBlock) return;
+        // Gentle recovery: a page size shrunk under the reply cap grows back one step per later block,
+        // so one oversized page (or a transient shrink) doesn't pin History to 1-tx pages for the session.
+        if (pageMax < PAGE_MAX && act.chainBlock() > shrunkAtBlock) pageMax = Math.min(PAGE_MAX, pageMax * 2);
         fetchPage(0);
     }
 
@@ -66,8 +73,7 @@ public class HistoryView extends BaseView {
             @Override public void onResult(JSONObject json) {
                 JSONObject resp = json.optJSONObject("response");
                 JSONArray txpows = resp == null ? null : resp.optJSONArray("txpows");
-                if (resp == null || txpows == null || !json.optBoolean("status", true)) {
-                    if (pageMax > 1) { pageMax = Math.max(1, pageMax / 2); fetchPage(offset); return; }
+                if (resp == null || txpows == null) {          // status:false arrives via onError since 0.4.9
                     fetching = false; render(); return;
                 }
                 fetching = false;
@@ -84,7 +90,15 @@ public class HistoryView extends BaseView {
                 render();
             }
             @Override public void onError(String message) {
-                if (pageMax > 1) { pageMax = Math.max(1, pageMax / 2); fetchPage(offset); return; }
+                // Shrink + retry ONLY for the oversized-reply case. Any other error (node offline, not
+                // enabled, rejected) must not ratchet the page size down nor chain immediate retries —
+                // that used to cost four back-to-back 30 s timeouts and pin pageMax at 1 for the session.
+                if (message != null && message.contains("exceeded the IPC limit") && pageMax > 1) {
+                    pageMax = Math.max(1, pageMax / 2);
+                    shrunkAtBlock = act.chainBlock();
+                    fetchPage(offset);
+                    return;
+                }
                 fetching = false; render();
             }
         });
@@ -99,7 +113,10 @@ public class HistoryView extends BaseView {
         // This wallet's own postings that aren't matched on-chain yet (or failed): always on top.
         List<HistoryRow> open = act.history().listOpen(200);
         for (HistoryRow r : open) container.addView(localRow(r));
-        List<NodeTx> rows = act.history().loadNodeTx(CAP);
+        // Render a bounded window (rows are rebuilt on every block while visible) — "Show more" widens it
+        // from the local cache; "Load older" fetches from the node once the cache is exhausted.
+        List<NodeTx> rows = act.history().loadNodeTx(shown);
+        int stored = act.history().nodeTxCount();
         if (rows.isEmpty() && open.isEmpty()) {
             TextView empty = new TextView(act);
             empty.setText(fetching ? "Loading history…" : "No transactions yet.");
@@ -110,7 +127,15 @@ public class HistoryView extends BaseView {
             return;
         }
         for (NodeTx n : rows) container.addView(row(n));
-        if (moreAvailable) {
+        if (stored > rows.size()) {
+            TextView more = new TextView(act);
+            more.setText("Show more (" + (stored - rows.size()) + " stored) ▾");
+            more.setTextColor(Design.accent());
+            more.setGravity(Gravity.CENTER);
+            more.setPadding(0, dp(12), 0, dp(8));
+            more.setOnClickListener(v -> { shown = Math.min(CAP, shown + SHOW_STEP); render(); });
+            container.addView(more);
+        } else if (moreAvailable) {
             TextView more = new TextView(act);
             more.setText("Load older ▾");
             more.setTextColor(Design.accent());

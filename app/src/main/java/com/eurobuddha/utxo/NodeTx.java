@@ -105,15 +105,24 @@ public class NodeTx {
     private static int count(String json) {
         try { return json == null ? 0 : new JSONArray(json).length(); } catch (Exception e) { return 0; }
     }
-    public boolean isSplit() { return "self".equals(direction) && count(outputs) > count(inputs) && count(outputs) > 1; }
-    public boolean isConsolidation() { return "self".equals(direction) && count(inputs) > count(outputs) && count(inputs) > 1; }
+    // Cached per instance: the classification parses both JSON arrays and History re-renders every block.
+    private int nIn = -1, nOut = -1;
+    private int ins()  { if (nIn  < 0) nIn  = count(inputs);  return nIn; }
+    private int outs() { if (nOut < 0) nOut = count(outputs); return nOut; }
+    public boolean isSplit() { return "self".equals(direction) && outs() > ins() && outs() > 1; }
+    public boolean isConsolidation() { return "self".equals(direction) && ins() > outs() && ins() > 1; }
     public boolean isReshuffle() { return isSplit() || isConsolidation(); }
     public String reshuffleLabel() {
-        return isSplit() ? ("Split · " + count(outputs) + " coins") : ("Consolidation · " + count(inputs) + " coins");
+        return isSplit() ? ("Split · " + outs() + " coins") : ("Consolidation · " + ins() + " coins");
     }
     /** For a reshuffle, the GROSS amount + token of the dominant output token (e.g. "500000  Minima") —
      *  more informative than the net "0" a self-only transaction otherwise shows. */
+    private String gross;   // cached — see above
     public String grossDisplay() {
+        if (gross != null) return gross;
+        return gross = computeGross();
+    }
+    private String computeGross() {
         try {
             JSONArray outs = new JSONArray(outputs);
             java.util.Map<String, BigDecimal> sums = new java.util.HashMap<>();
