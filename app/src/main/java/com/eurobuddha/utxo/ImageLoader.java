@@ -6,9 +6,6 @@ import android.util.Base64;
 import android.util.LruCache;
 import android.widget.ImageView;
 
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 /**
  * Minimal async loader for token icons: handles data: URIs, http(s), and ipfs:// URLs, with a
@@ -138,35 +135,10 @@ public final class ImageLoader {
         return Math.max(1, s);
     }
 
+    /** Fetch via {@link NetFetch} (http(s) only, no loopback/LAN, per-hop redirect checks, byte cap). */
     private static byte[] fetch(String url) throws Exception {
         String f = url.startsWith("ipfs://") ? "https://ipfs.io/ipfs/" + url.substring("ipfs://".length()) : url;
-        URL u = new URL(f);
-        if (isBlockedHost(u.getHost())) return null;   // token metadata must not point us at loopback/LAN (e.g. the node RPC)
-        HttpURLConnection con = (HttpURLConnection) u.openConnection();
-        con.setConnectTimeout(8000);
-        con.setReadTimeout(15000);
-        con.setInstanceFollowRedirects(true);
-        try (InputStream in = con.getInputStream(); java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
-            byte[] buf = new byte[8192]; int n; int total = 0;
-            while ((n = in.read(buf)) > 0) {
-                total += n;
-                if (total > MAX_BYTES) return null;    // oversized response — bail, keep the identicon
-                bos.write(buf, 0, n);
-            }
-            return bos.toByteArray();
-        } finally { con.disconnect(); }
-    }
-
-    /** True for loopback / any-local / link-local / site-local (private) hosts, or anything unresolvable. */
-    static boolean isBlockedHost(String host) {
-        if (host == null || host.isEmpty()) return true;
-        try {
-            for (java.net.InetAddress a : java.net.InetAddress.getAllByName(host)) {
-                if (a.isLoopbackAddress() || a.isAnyLocalAddress() || a.isLinkLocalAddress() || a.isSiteLocalAddress())
-                    return true;
-            }
-        } catch (Exception e) { return true; }
-        return false;
+        return NetFetch.get(f, MAX_BYTES, 8000, 15000, false);   // oversized → null, keep the identicon
     }
 
     private static byte[] dataUriBytes(String dataUri) {
