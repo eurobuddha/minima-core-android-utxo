@@ -181,12 +181,11 @@ public class WalletTools {
         status.show("Consolidating…", true);
         act.node().cmd("consolidate tokenid:" + tokenid, new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
-                boolean ok = json.optBoolean("status", true);
+                // A rejected command (status:false, e.g. nothing to consolidate) arrives via onError.
                 // Node-driven consolidate picks its own inputs, so the txpowid can't be resolved by
                 // input match — store null rather than the unreliable response id.
-                act.history().update(internalid,
-                        ok ? HistoryDb.STATUS_POSTED : HistoryDb.STATUS_ERROR, null, "");
-                status.show(ok ? "Consolidate submitted." : "Nothing to consolidate.", ok);
+                act.history().update(internalid, HistoryDb.STATUS_POSTED, null, "");
+                status.show("Consolidate submitted.", true);
                 act.reload();
             }
             @Override public void onError(String message) {

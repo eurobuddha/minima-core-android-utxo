@@ -117,6 +117,15 @@ public class NodeApi {
                         if (cb != null) cb.onError("Node reply exceeded the IPC limit — update Minima Core (needs 1.3.0+).");
                         return;
                     }
+                    // Any other status:false is a REJECTED command ({"status":false,"error":"..."}) — it must
+                    // surface as an error, never reach onResult looking like success. (TxnBuilder used to
+                    // chain txninput→txnoutput→txnsign straight through such replies and report "sent".)
+                    if (!zResponse.optBoolean("status", true)) {
+                        String err = zResponse.optString("error", "");
+                        if (err.isEmpty() && resp instanceof String) err = (String) resp;
+                        if (cb != null) cb.onError(err.isEmpty() ? "Node rejected the command." : err);
+                        return;
+                    }
                     if (cb != null) cb.onResult(zResponse);
                 });
             }

@@ -229,19 +229,16 @@ public class SendView extends BaseView {
         act.node().cmd("checkaddress address:" + recipient, new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
                 previewBtn.setEnabled(true);
-                if (!json.optBoolean("status", false)) {
-                    setNote(addrNote, "That isn't a valid Minima address.", R.color.ux_error);
-                    statusView.setVisibility(View.GONE);
-                    return;
-                }
                 statusView.setVisibility(View.GONE);
                 showConfirm(sel, recipient, amount.stripTrailingZeros().toPlainString(),
                         hasChange ? changeAddr : null, changeStr, burnStr, tokenid, tokenName, total);
             }
             @Override public void onError(String message) {
                 previewBtn.setEnabled(true);
+                // NodeApi turns the node's status:false (invalid address) into onError with its message.
                 setNote(addrNote, NodeApi.ERR_NOT_ENABLED.equals(message)
-                        ? "Enable this wallet in Minima Core → Apps first." : "Could not validate address.", R.color.ux_error);
+                        ? "Enable this wallet in Minima Core → Apps first."
+                        : "Address check failed: " + message, R.color.ux_error);
                 statusView.setVisibility(View.GONE);
             }
         });
