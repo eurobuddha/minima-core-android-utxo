@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private DistributeManager distribute;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
-    private final Runnable reloadTask = this::reload;
+    private final Runnable reloadTask = this::reloadQuiet;
 
     // ----- wallet state -----
     private final List<Coin> coins = new ArrayList<>();
@@ -67,7 +67,12 @@ public class MainActivity extends AppCompatActivity {
     private int chainBlock = 0;
     private int lastScriptsBlock = -1;                 // throttle the ~27 KB scripts fetch
     private static final int SCRIPTS_EVERY = 20;       // blocks between scripts refreshes
-    private static final long UNKNOWN_STALE_MS = 15 * 60 * 1000L;   // an unanswered txnsign whose inputs are still unspent after this = not posted
+    private static final long UNKNOWN_STALE_MS = 15 * 60 * 1000L;
+    private static final int COINS_EVERY = 10;         // blocks between coin refreshes in sliced mode (old node)
+    private String coinsMode = "whole";                // last CoinLoader mode
+    private boolean coinsDirty = true;                 // something changed → refetch coins even in sliced mode
+    private int lastCoinsBlock = -1;
+    private String coinsNote = "";                     // Wallet-tab banner when coins came sliced / incomplete   // an unanswered txnsign whose inputs are still unspent after this = not posted
     private String circulatingSupply = "";             // status.minima — live total Minima (1bn − burnt)
 
     // ----- selection state (single tokenid at a time) -----
@@ -188,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
                 if (data == null) return;
                 try {
                     String event = new org.json.JSONObject(data).optString("event", "");
+                    if ("NEWBALANCE".equals(event)) coinsDirty = true;   // coins changed → refetch even in sliced mode
                     if ("NEWBLOCK".equals(event) || "NEWBALANCE".equals(event)) {
                         requestReload();
                     }
@@ -205,6 +211,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // Refresh from the node (also re-checks enablement after returning from Minima Core).
+        coinsDirty = true;
         requestReload();
         // If the user returns while parked on History, refetch it (otherwise it waits for the next block).
         if (currentTab() == TAB_HISTORY) views[TAB_HISTORY].onShown();
@@ -222,8 +229,14 @@ public class MainActivity extends AppCompatActivity {
 
     // ===== loading =====
 
-    /** Pull coins, sendable set, balances, default address and chain tip from the node. */
+    /** Explicit reload after a send / tool / user action: coins are refetched even in sliced mode. */
     public void reload() {
+        coinsDirty = true;
+        reloadQuiet();
+    }
+
+    /** Pull coins, sendable set, balances, default address and chain tip from the node. */
+    private void reloadQuiet() {
         node.cmd("block", new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
                 setPaired(true);
@@ -243,50 +256,46 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onError(String message) { handleErr(message); }
         });
 
-        // Whole coin list per reload. The node's coins command has no paging parameters (its params are
-        // relevant/sendable/coinid/amount/address/tokenid/coinage/checkmempool/order — checked in
-        // core/minima-core coins.java), so a large wallet relies on minimaapi's content:// file hand-off
-        // for replies over the IPC cap. Revisit if the node ever grows max/offset here.
-        node.cmd("coins relevant:true", new NodeApi.Cb() {
-            @Override public void onResult(JSONObject json) {
-                setPaired(true);
-                JSONArray arr = json.optJSONArray("response");
-                if (arr == null) {
-                    // Malformed/stub reply — keep the coins we have rather than painting an empty wallet.
-                    handleErr("Coin list unavailable — the node returned an invalid reply.");
-                    return;
-                }
-                coins.clear();
-                for (int i = 0; i < arr.length(); i++) {
-                    JSONObject c = arr.optJSONObject(i);
-                    if (c != null) coins.add(Coin.from(c));
-                }
-                // then the sendable subset
-                node.cmd("coins relevant:true sendable:true", new NodeApi.Cb() {
-                    @Override public void onResult(JSONObject json2) {
-                        sendableIds.clear();
-                        JSONArray a2 = json2.optJSONArray("response");
-                        if (a2 != null) {
-                            for (int i = 0; i < a2.length(); i++) {
-                                JSONObject c = a2.optJSONObject(i);
-                                if (c != null) sendableIds.add(c.optString("coinid", ""));
-                            }
-                        }
-                        for (Coin c : coins) c.sendable = sendableIds.contains(c.coinid);
-                        pruneSelection();
-                        // Settle any "posted?" rows (txnsign timed out) against the live coin set.
-                        Set<String> live = new HashSet<>();
-                        for (Coin c : coins) live.add(c.coinid);
-                        historyDb.reconcileUnknown(live, UNKNOWN_STALE_MS);
-                        refreshAll();
-                        // Advance any running multi-batch Distribute job (change coin may have confirmed).
-                        if (distribute != null) distribute.onCoinsUpdated();
+        // Coin set. The node's coins command has no paging parameters (relevant/sendable/coinid/amount/
+        // address/tokenid/coinage/checkmempool/order — core/minima-core coins.java), so on a pre-1.3.0 node
+        // (no file hand-off, 256,000-char reply cap) CoinLoader slices by token, then by address. Sliced
+        // mode is many IPC calls, so it only re-runs when something changed (NEWBALANCE, a send/tool,
+        // onResume, an active Distribute) or every COINS_EVERY blocks — not on every block.
+        boolean sliced = !"whole".equals(coinsMode);
+        boolean fetchCoins = !sliced || coinsDirty || chainBlock - lastCoinsBlock >= COINS_EVERY
+                || (distribute != null && distribute.isActive());
+        if (fetchCoins) {
+            coinsDirty = false;
+            CoinLoader.load(this, new CoinLoader.Done() {
+                @Override public void onCoins(List<Coin> got, Set<String> sendable, int expected, String mode) {
+                    setPaired(true);
+                    coinsMode = mode;
+                    lastCoinsBlock = chainBlock;
+                    coins.clear();
+                    coins.addAll(got);
+                    sendableIds.clear();
+                    sendableIds.addAll(sendable);
+                    int missing = expected >= 0 ? expected - coins.size() : 0;
+                    if (missing > 0) {
+                        coinsNote = missing + (missing == 1 ? " coin is" : " coins are") + " not shown: this Minima Core (<1.3.0) caps "
+                                + "replies and one slice was still too big. Update Minima Core to see everything.";
+                    } else if (!"whole".equals(mode)) {
+                        coinsNote = "Coins loaded in slices (this Minima Core is <1.3.0 and caps replies) — refreshed on balance changes.";
+                    } else {
+                        coinsNote = "";
                     }
-                    @Override public void onError(String message) { refreshAll(); }
-                });
-            }
-            @Override public void onError(String message) { handleErr(message); }
-        });
+                    pruneSelection();
+                    // Settle any "posted?" rows (txnsign timed out) against the live coin set.
+                    Set<String> live = new HashSet<>();
+                    for (Coin c : coins) live.add(c.coinid);
+                    historyDb.reconcileUnknown(live, UNKNOWN_STALE_MS);
+                    refreshAll();
+                    // Advance any running multi-batch Distribute job (change coin may have confirmed).
+                    if (distribute != null) distribute.onCoinsUpdated();
+                }
+                @Override public void onError(String message) { coinsDirty = true; handleErr(message); }
+            });
+        }
 
         node.cmd("balance", new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
@@ -462,6 +471,8 @@ public class MainActivity extends AppCompatActivity {
     public NodeApi node() { return node; }
     public HistoryDb history() { return historyDb; }
     public List<Coin> coins() { return coins; }
+    /** Non-empty when the coin list came sliced or incomplete because the node caps replies (see CoinLoader). */
+    public String coinsNote() { return coinsNote; }
     public List<TokenBalance> balances() { return balances; }
     public List<String[]> myAddresses() { return myAddresses; }
     /** Live circulating Minima supply (status.minima = 1bn − burnt), or "" until status has loaded. */

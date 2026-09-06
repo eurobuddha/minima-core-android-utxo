@@ -173,6 +173,14 @@ public class WalletView extends BaseView {
         for (String hex : contractCoined) order.put(hex, miniOf.get(hex));
         for (String[] a : act.myAddresses()) if (!order.containsKey(a[0])) order.put(a[0], a[1]);
 
+        if (!act.coinsNote().isEmpty()) {
+            TextView warn = new TextView(act);
+            warn.setText(act.coinsNote());
+            warn.setTextColor(Design.amber());
+            warn.setTextSize(11f);
+            warn.setPadding(dp(8), dp(6), dp(8), dp(6));
+            container.addView(warn);
+        }
         if (order.isEmpty()) {
             addNote("No addresses yet. Make sure the wallet is enabled in Minima Core.");
             return;
