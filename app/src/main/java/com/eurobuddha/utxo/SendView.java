@@ -332,6 +332,16 @@ public class SendView extends BaseView {
                 status("Failed: " + message, false);
                 previewBtn.setEnabled(true);
             }
+            @Override public void onUnknown(String message) {
+                // Not a failure: the node may still post. Keep the typed fields so a settled "not posted"
+                // can be retried; the row sits at the top of History as "posted?" until the coins decide.
+                act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, "node reply timed out — awaiting settlement");
+                status("No reply from the node in time — the transaction may still have posted. "
+                        + "See 'posted?' at the top of History; it settles itself over the next blocks.", false);
+                previewBtn.setEnabled(true);
+                act.clearSelection();
+                act.reload();
+            }
         }).onProgress(label -> status(label, true)).run();
     }
 

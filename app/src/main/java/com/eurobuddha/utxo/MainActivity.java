@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
     private int chainBlock = 0;
     private int lastScriptsBlock = -1;                 // throttle the ~27 KB scripts fetch
     private static final int SCRIPTS_EVERY = 20;       // blocks between scripts refreshes
+    private static final long UNKNOWN_STALE_MS = 15 * 60 * 1000L;   // an unanswered txnsign whose inputs are still unspent after this = not posted
     private String circulatingSupply = "";             // status.minima — live total Minima (1bn − burnt)
 
     // ----- selection state (single tokenid at a time) -----
@@ -269,6 +270,10 @@ public class MainActivity extends AppCompatActivity {
                         }
                         for (Coin c : coins) c.sendable = sendableIds.contains(c.coinid);
                         pruneSelection();
+                        // Settle any "posted?" rows (txnsign timed out) against the live coin set.
+                        Set<String> live = new HashSet<>();
+                        for (Coin c : coins) live.add(c.coinid);
+                        historyDb.reconcileUnknown(live, UNKNOWN_STALE_MS);
                         refreshAll();
                         // Advance any running multi-batch Distribute job (change coin may have confirmed).
                         if (distribute != null) distribute.onCoinsUpdated();

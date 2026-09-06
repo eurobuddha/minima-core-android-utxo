@@ -108,6 +108,12 @@ public class DistributeManager {
         }
 
         // Change coin confirmed: feed it as the sole input of the next batch.
+        if (job.unknownN > 0) {   // the timed-out batch did post after all — advance past its recipients now
+            for (int i = 0; i < job.unknownN && !job.remaining.isEmpty(); i++) job.remaining.remove(0);
+            job.batchesDone++;
+            job.unknownN = 0;
+            if (job.remaining.isEmpty() || job.batchesDone >= job.maxBatches) { complete(); return; }
+        }
         job.waiting = false;
         List<Coin> inputs = Collections.singletonList(change);
         doNextBatch(inputs, new BigDecimal(change.amount));
@@ -193,6 +199,24 @@ public class DistributeManager {
             }
 
             @Override public void onFailed(String message) { failBatch(message); }
+
+            /** txnsign timed out: the batch may have posted. Don't advance yet — wait for its change coin
+             *  by address+amount (no coinid was captured); if it shows up the batch DID post and we advance
+             *  then; if nothing shows within the expiry the job aborts and the History row explains. */
+            @Override public void onUnknown(String message) {
+                act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, "node reply timed out — awaiting settlement");
+                inFlight = false;
+                if (!hasChange) { complete(); return; }     // nothing to chain on; the coin set settles the row
+                job.expectedChangeCoinId = "";
+                job.nextChangeAddr = changeAddr;
+                job.expectedChangeAmt = changeStr;
+                job.unknownN = n;
+                job.atBlock = act.chainBlock();
+                job.waiting = true;
+                job.save(act);
+                toast("Distribute: no reply from the node in time — waiting to see if batch " + (job.batchesDone + 1) + " posted…");
+                act.refreshTools();
+            }
         }).run();
     }
 

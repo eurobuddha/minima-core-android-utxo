@@ -93,6 +93,12 @@ public class WalletTools {
                 act.history().update(internalid, HistoryDb.STATUS_ERROR, null, message);
                 status.show("Failed: " + message, false);
             }
+            @Override public void onUnknown(String message) {
+                act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, "node reply timed out — awaiting settlement");
+                status.show(okLabel + " — no reply from the node in time; it may still have posted. See 'posted?' in History.", false);
+                act.clearSelection();
+                act.reload();
+            }
         }).run();
     }
 

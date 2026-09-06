@@ -20,6 +20,9 @@ public class TxnBuilder {
     public interface Done {
         void onPosted(String txpowid, List<OutCoin> outputs);
         void onFailed(String message);
+        /** txnsign didn't answer in time: the node may still finish PoW and post. NOT a failure — the
+         *  caller records STATUS_UNKNOWN and the live coin set settles it (HistoryDb.reconcileUnknown). */
+        default void onUnknown(String message) { onFailed(message); }
     }
 
     /** Live build progress (so the UI shows staged logs, not one static line). */
@@ -118,7 +121,16 @@ public class TxnBuilder {
                     @Override public void onResult(JSONObject json) {
                         done.onPosted(parseTxpowid(json), parseOutputs(json));
                     }
-                    @Override public void onError(String message) { fail(message); }
+                    @Override public void onError(String message) {
+                        if (NodeApi.isTimeout(message)) {
+                            // Outcome unknown. Still clean the custom-txn record (txnsign carries
+                            // txndelete:true itself; this covers the not-yet-signed case).
+                            act.node().cmd("txndelete id:" + txid, null);
+                            done.onUnknown(message);
+                            return;
+                        }
+                        fail(message);
+                    }
                 });
     }
 

@@ -32,6 +32,7 @@ public class DistributeJob {
     public int atBlock = 0;                // chain height when the last batch was posted
     public int retryCount = 0;             // failed attempts at the current batch
     public String currentInternalId = "";  // history row of the in-flight/last batch
+    public int unknownN = 0;               // recipients of a batch whose txnsign timed out (outcome unknown)
 
     /** Serialize the whole job state for persistence. */
     public JSONObject toJson() {
@@ -50,6 +51,7 @@ public class DistributeJob {
             o.put("atBlock", atBlock);
             o.put("retryCount", retryCount);
             o.put("currentInternalId", currentInternalId);
+            o.put("unknownN", unknownN);
         } catch (org.json.JSONException ignored) {}
         return o;
     }
@@ -71,6 +73,7 @@ public class DistributeJob {
         j.atBlock = o.optInt("atBlock", 0);
         j.retryCount = o.optInt("retryCount", 0);
         j.currentInternalId = o.optString("currentInternalId", "");
+        j.unknownN = o.optInt("unknownN", 0);
         return j;
     }
 

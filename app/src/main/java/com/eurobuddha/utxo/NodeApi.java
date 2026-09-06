@@ -32,6 +32,10 @@ public class NodeApi {
 
     /** Returned as the error message when the node says we are not enabled yet. */
     public static final String ERR_NOT_ENABLED = "NOT_ENABLED";
+    /** The timeout message. A timed-out WRITE (txnsign) is NOT a failure — the node may still finish the
+     *  proof-of-work and post; callers must treat it as unknown, never as "not sent". */
+    public static final String ERR_TIMEOUT = "Minima Core didn't respond. Is it installed, running and enabled?";
+    public static boolean isTimeout(String message) { return ERR_TIMEOUT.equals(message); }
 
     private static final long READ_TIMEOUT_MS = 30000;
     private static final long WRITE_TIMEOUT_MS = 180000;   // build + proof-of-work + post is slow on mobile
@@ -85,7 +89,7 @@ public class NodeApi {
             mPending.remove(ref[0]);
             if (done[0] || dead()) return;
             done[0] = true;
-            if (cb != null) cb.onError("Minima Core didn't respond. Is it installed, running and enabled?");
+            if (cb != null) cb.onError(ERR_TIMEOUT);
         };
         ref[0] = timeout;
         mPending.add(timeout);
