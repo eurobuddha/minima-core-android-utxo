@@ -1,6 +1,9 @@
 package com.eurobuddha.utxo;
 
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -10,6 +13,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -99,7 +103,7 @@ public class SendView extends BaseView {
         BigDecimal total = BigDecimal.ZERO;
         for (Coin c : sel) {
             try { total = total.add(new BigDecimal(c.amount)); } catch (Exception ignored) {}
-            fromList.addView(row("• " + Util.shorten(c.coinid), Util.tidyAmount(c.amount), false));
+            fromList.addView(idRow("• coin", c.coinid, "", Util.tidyAmount(c.amount)));
         }
         View totalRow = row("Total in", Util.tidyAmount(total.toPlainString()) + " " + tokenName, true);
         fromList.addView(totalRow);
@@ -256,17 +260,17 @@ public class SendView extends BaseView {
         body.setPadding(pad, dp(8), pad, 0);
 
         body.addView(sectionLabel("INPUTS"));
-        for (Coin c : sel) body.addView(row("• " + Util.shorten(c.coinid), Util.tidyAmount(c.amount), false));
+        for (Coin c : sel) body.addView(idRow("• coin", c.coinid, "", Util.tidyAmount(c.amount)));
         body.addView(row("Total in", Util.tidyAmount(total.toPlainString()) + " " + tokenName, true));
 
         body.addView(sectionLabel("OUTPUTS"));
-        body.addView(row("→ " + Util.shorten(recipient) + (isMine(recipient) ? "  (yours)" : ""),
-                Util.tidyAmount(amountStr) + " " + tokenName, false));
+        body.addView(idRow("→ to", recipient, isMine(recipient) ? "(yours)" : "",
+                Util.tidyAmount(amountStr) + " " + tokenName));
         if (changeStr != null) {
             // Flag a change address we don't recognise as ours with "(verify)" — guards against typos
             // in a hand-edited change field sending the remainder to a stranger.
-            body.addView(row("↩ " + Util.shorten(changeAddr) + (isMine(changeAddr) ? "  (yours)" : "  (verify)"),
-                    Util.tidyAmount(changeStr) + " " + tokenName, false));
+            body.addView(idRow("↩ change", changeAddr, isMine(changeAddr) ? "(yours)" : "(verify)",
+                    Util.tidyAmount(changeStr) + " " + tokenName));
         }
         if (burnStr != null) {
             body.addView(row("🔥 burn", Util.tidyAmount(burnStr) + " MINIMA", false));
@@ -357,6 +361,49 @@ public class SendView extends BaseView {
         rt.setTypeface(android.graphics.Typeface.MONOSPACE, bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         r.addView(rt);
         return r;
+    }
+
+    /**
+     * A row for an identifier (coinid / address): a header line with the label, an optional tag
+     * ("(yours)" / "(verify)") and the amount, then the FULL value on its own wrapping line. Never
+     * shortened — this is the screen where the user is asked to verify the address, so every
+     * character must be visible. Tapping the value copies the complete string.
+     */
+    private View idRow(String label, String value, String tag, String amount) {
+        LinearLayout col = new LinearLayout(act);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(0, dp(4), 0, dp(4));
+
+        LinearLayout head = new LinearLayout(act);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        TextView l = new TextView(act);
+        l.setText(tag.isEmpty() ? label : label + "  " + tag);
+        l.setTextColor("(verify)".equals(tag) ? Design.red() : Design.dim());
+        l.setTextSize(12f);
+        l.setTypeface(android.graphics.Typeface.MONOSPACE);
+        l.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        head.addView(l);
+        TextView rt = new TextView(act);
+        rt.setText(amount);
+        rt.setTextColor(Design.text());
+        rt.setTextSize(12f);
+        rt.setTypeface(android.graphics.Typeface.MONOSPACE);
+        head.addView(rt);
+        col.addView(head);
+
+        TextView v = new TextView(act);
+        v.setText(value);
+        v.setTextColor(Design.text());
+        v.setTextSize(11f);
+        v.setTypeface(android.graphics.Typeface.MONOSPACE);
+        v.setPadding(dp(12), dp(1), 0, 0);
+        v.setOnClickListener(x -> {
+            ClipboardManager cm = (ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE);
+            cm.setPrimaryClip(ClipData.newPlainText(label, value));
+            Toast.makeText(act, "Copied", Toast.LENGTH_SHORT).show();
+        });
+        col.addView(v);
+        return col;
     }
 
     /** Builds a small dim, letter-spaced section heading (INPUTS / OUTPUTS) for the Confirm dialog. */
