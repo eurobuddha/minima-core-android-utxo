@@ -316,7 +316,7 @@ public class SendView extends BaseView {
                 // fills the real txpowid (and marks confirmed) once the transaction is mined.
                 act.history().update(internalid, HistoryDb.STATUS_POSTED, null, "");
                 status("✓ Posted — " + Util.tidyAmount(amountStr) + " " + tokenName
-                        + " sent. The Explorer link appears in History once it confirms on-chain.", true);
+                        + " sent. It's at the top of History; the Explorer link appears once it confirms on-chain.", true);
                 addrInput.setText("");
                 amountInput.setText("");
                 burnInput.setText("");

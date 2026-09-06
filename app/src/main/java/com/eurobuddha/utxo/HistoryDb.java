@@ -20,9 +20,10 @@ public class HistoryDb extends SQLiteOpenHelper {
     public static final String STATUS_POSTED    = "posted";    // broadcast, awaiting confirmation
     public static final String STATUS_CONFIRMED = "confirmed"; // real on-chain txpowid resolved
     public static final String STATUS_ERROR     = "error";
+    public static final String STATUS_UNKNOWN   = "unknown";   // txnsign timed out: may or may not have posted
 
     private static final String DB_NAME = "utxo_history.db";
-    private static final int    DB_VERSION = 4;     // v4: nodetx full schema (mirror of the History app)
+    private static final int    DB_VERSION = 5;     // v5: nodetx inputs/outputs carry coinid (resolver key)
     private static final String TABLE = "history";
 
     public HistoryDb(Context ctx) {
@@ -61,7 +62,7 @@ public class HistoryDb extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldV, int newV) {
         // nodetx is a re-fetchable cache of on-chain history — recreate it if its schema changed.
-        if (oldV < 4) db.execSQL("DROP TABLE IF EXISTS nodetx");
+        if (oldV < 5) db.execSQL("DROP TABLE IF EXISTS nodetx");
         // Preserve the local send-records (history) table; (re)create tables; add the v2 send columns.
         onCreate(db);
         for (String col : new String[]{"inputs TEXT", "outputs TEXT", "changeaddr TEXT", "burn TEXT"}) {
@@ -104,11 +105,21 @@ public class HistoryDb extends SQLiteOpenHelper {
 
     /** Return the most recent rows (newest id first), capped at limit. */
     public List<HistoryRow> list(int limit) {
+        return query("SELECT id,internalid,txnid,status,recipient,amount,tokenid,tokenname,ts,note," +
+                "inputs,outputs,changeaddr,burn FROM " + TABLE + " ORDER BY id DESC LIMIT " + limit);
+    }
+
+    /** Rows this wallet posted that are NOT yet matched to an on-chain transaction (posting / posted /
+     *  unknown / error) — shown at the top of History. Confirmed rows appear as their nodetx entry instead. */
+    public List<HistoryRow> listOpen(int limit) {
+        return query("SELECT id,internalid,txnid,status,recipient,amount,tokenid,tokenname,ts,note," +
+                "inputs,outputs,changeaddr,burn FROM " + TABLE + " WHERE status<>'" + STATUS_CONFIRMED +
+                "' ORDER BY id DESC LIMIT " + limit);
+    }
+
+    private List<HistoryRow> query(String sql) {
         List<HistoryRow> out = new ArrayList<>();
-        Cursor c = getReadableDatabase().rawQuery(
-                "SELECT id,internalid,txnid,status,recipient,amount,tokenid,tokenname,ts,note," +
-                        "inputs,outputs,changeaddr,burn " +
-                        "FROM " + TABLE + " ORDER BY id DESC LIMIT " + limit, null);
+        Cursor c = getReadableDatabase().rawQuery(sql, null);
         try {
             while (c.moveToNext()) {
                 HistoryRow r = new HistoryRow();
@@ -145,7 +156,66 @@ public class HistoryDb extends SQLiteOpenHelper {
         v.put("deltas", n.deltas); v.put("counterparty", n.counterparty);
         v.put("inputs", n.inputs); v.put("outputs", n.outputs);
         long rid = getWritableDatabase().insertWithOnConflict("nodetx", null, v, SQLiteDatabase.CONFLICT_IGNORE);
+        if (rid != -1) resolve(n);
         return rid != -1;
+    }
+
+    /**
+     * The resolver: a freshly seen on-chain transaction CONFIRMS any local row whose recorded input
+     * coinids it spent. Local rows never store the txnsign-response id (not the on-chain id); this is
+     * where the real txpowid lands. Returns true if a row was confirmed.
+     */
+    public boolean resolve(NodeTx n) {
+        java.util.Set<String> spent = coinIds(n.inputs, "coinid");
+        if (spent.isEmpty()) return false;
+        boolean any = false;
+        for (HistoryRow r : listOpen(500)) {
+            if (STATUS_ERROR.equals(r.status)) continue;          // an errored row never posted
+            java.util.Set<String> mine = coinIds(r.inputs, "coinid");
+            mine.retainAll(spent);
+            if (mine.isEmpty()) continue;
+            update(r.internalid, STATUS_CONFIRMED, n.txpowid, "");
+            any = true;
+        }
+        return any;
+    }
+
+    /**
+     * Rows left UNKNOWN (the node didn't answer txnsign in time) are settled by the live coin set:
+     * inputs gone → it posted (POSTED; the resolver confirms it when History sees the txpow);
+     * inputs all still unspent after {@code staleMs} → it never posted (ERROR). Returns true on change.
+     */
+    public boolean reconcileUnknown(java.util.Set<String> liveCoinIds, long staleMs) {
+        boolean any = false;
+        long now = System.currentTimeMillis();
+        for (HistoryRow r : listOpen(500)) {
+            if (!STATUS_UNKNOWN.equals(r.status)) continue;
+            java.util.Set<String> mine = coinIds(r.inputs, "coinid");
+            if (mine.isEmpty()) continue;
+            boolean anyLive = false, allLive = true;
+            for (String id : mine) { if (liveCoinIds.contains(id)) anyLive = true; else allLive = false; }
+            if (!anyLive) { update(r.internalid, STATUS_POSTED, null, "posted (node reply timed out; inputs spent)"); any = true; }
+            else if (allLive && now - r.ts > staleMs) {
+                update(r.internalid, STATUS_ERROR, null, "The node didn't answer in time and the coins are still unspent — not posted."); any = true;
+            }
+        }
+        return any;
+    }
+
+    /** The values of {@code key} across a JSON array of coin objects (empty on null/garbage). */
+    private static java.util.Set<String> coinIds(String json, String key) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (json == null || json.isEmpty()) return out;
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(json);
+            for (int i = 0; i < a.length(); i++) {
+                org.json.JSONObject o = a.optJSONObject(i);
+                if (o == null) continue;
+                String id = o.optString(key, "");
+                if (!id.isEmpty()) out.add(id);
+            }
+        } catch (Exception ignored) {}
+        return out;
     }
 
     /** Newest-first persisted on-chain history, capped at limit. */

@@ -32,6 +32,7 @@ import java.util.Locale;
 public class HistoryView extends BaseView {
 
     private static final int CAP = 1000;       // rows kept + shown
+    private static final String EXPLORER_TX = "https://explorer.minima.global/transactions/";
 
     private final LinearLayout container;
     private int pageMax = 8;                    // adaptive page size — shrinks under the 256 KB cap
@@ -95,8 +96,11 @@ public class HistoryView extends BaseView {
         root.setBackgroundColor(Design.bg());          // was showing dark in light mode
         container.setBackgroundColor(Design.bg());
         container.removeAllViews();
+        // This wallet's own postings that aren't matched on-chain yet (or failed): always on top.
+        List<HistoryRow> open = act.history().listOpen(200);
+        for (HistoryRow r : open) container.addView(localRow(r));
         List<NodeTx> rows = act.history().loadNodeTx(CAP);
-        if (rows.isEmpty()) {
+        if (rows.isEmpty() && open.isEmpty()) {
             TextView empty = new TextView(act);
             empty.setText(fetching ? "Loading history…" : "No transactions yet.");
             empty.setTextColor(Design.dim());
@@ -155,6 +159,95 @@ public class HistoryView extends BaseView {
         return row;
     }
 
+    // ----- this wallet's own postings (local audit rows) -----
+
+    private static boolean isFailed(HistoryRow r) { return HistoryDb.STATUS_ERROR.equals(r.status); }
+
+    private static String statusWord(HistoryRow r) {
+        switch (r.status == null ? "" : r.status) {
+            case HistoryDb.STATUS_POSTING: return "posting…";
+            case HistoryDb.STATUS_POSTED:  return "posted · awaiting confirmation";
+            case HistoryDb.STATUS_UNKNOWN: return "posted? · node didn't answer";
+            case HistoryDb.STATUS_ERROR:   return "FAILED";
+            default: return r.status;
+        }
+    }
+
+    private View localRow(final HistoryRow r) {
+        LinearLayout row = new LinearLayout(act);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(8), dp(11), dp(8), dp(11));
+        boolean failed = isFailed(r);
+        int color = failed ? Design.red() : Design.amber();
+
+        TextView glyph = new TextView(act);
+        glyph.setText(failed ? "✗" : "⏳"); glyph.setTextColor(color); glyph.setTextSize(18f); glyph.setWidth(dp(28));
+        row.addView(glyph);
+
+        LinearLayout mid = new LinearLayout(act);
+        mid.setOrientation(LinearLayout.VERTICAL);
+        mid.setPadding(dp(6), 0, dp(6), 0);
+        mid.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView line1 = new TextView(act);
+        line1.setText("−" + Util.tidyAmount(r.amount) + "  " + r.tokenName);
+        line1.setTextColor(color); line1.setTextSize(15f); line1.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView line2 = new TextView(act);
+        // Recipient is either an address (tap the row for the full, copyable value) or a tool label.
+        String to = r.recipient == null ? "" : (Util.isValidAddress(r.recipient) ? Util.shorten(r.recipient) : r.recipient);
+        line2.setText(to + "  ·  " + statusWord(r) + "  ·  " + relative(r.ts));
+        line2.setTextColor(Design.dim()); line2.setTextSize(12f);
+        mid.addView(line1); mid.addView(line2);
+        row.addView(mid);
+
+        TextView right = new TextView(act);
+        right.setText("local"); right.setTextColor(Design.dim()); right.setTextSize(11f); right.setGravity(Gravity.END);
+        row.addView(right);
+
+        row.setOnClickListener(v -> showLocalDetail(r));
+        return row;
+    }
+
+    /** Everything recorded before signing: status, the node's error, recipient, inputs (coinids), outputs, change, burn. */
+    private void showLocalDetail(final HistoryRow r) {
+        LinearLayout box = new LinearLayout(act);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(12), dp(20), dp(12));
+        kv(box, "Status", statusWord(r));
+        if (r.note != null && !r.note.isEmpty()) kv(box, isFailed(r) ? "Error" : "Note", r.note);
+        kv(box, "Amount", "−" + Util.tidyAmount(r.amount) + " " + r.tokenName);
+        kv(box, "Time", new SimpleDateFormat("dd MMM yyyy  HH:mm:ss", Locale.ENGLISH).format(new Date(r.ts)));
+        if (r.recipient != null && Util.isValidAddress(r.recipient)) copyRow(box, "To", r.recipient);
+        else if (r.recipient != null && !r.recipient.isEmpty()) kv(box, "Action", r.recipient);
+        if (!Util.isMinima(r.tokenid)) copyRow(box, "Tokenid", r.tokenid);
+        if (r.changeaddr != null && !r.changeaddr.isEmpty()) copyRow(box, "Change to", r.changeaddr);
+        if (r.burn != null && !r.burn.isEmpty()) kv(box, "Burn", Util.tidyAmount(r.burn) + " Minima");
+        addLocalCoins(box, "Inputs (coins spent)", r.inputs, "coinid");
+        addLocalCoins(box, "Outputs", r.outputs, null);
+        ScrollView sv = new ScrollView(act);
+        sv.addView(box);
+        AlertDialog.Builder b = new AlertDialog.Builder(act).setTitle(isFailed(r) ? "Failed transaction" : "Pending transaction")
+                .setView(sv).setPositiveButton("Close", null);
+        if (isFailed(r)) b.setNegativeButton("Dismiss", (d, w) -> { act.history().delete(r.internalid); render(); });
+        b.show();
+    }
+
+    /** [{coinid,address,amount}] or [{address,amount}] → bullets with full, copyable identifiers. */
+    private void addLocalCoins(LinearLayout p, String title, String json, String idKey) {
+        try {
+            JSONArray a = new JSONArray(json == null ? "[]" : json);
+            if (a.length() == 0) return;
+            sectionHeader(p, title);
+            for (int i = 0; i < a.length(); i++) {
+                JSONObject c = a.optJSONObject(i);
+                if (c == null) continue;
+                bullet(p, "• " + Util.tidyAmount(c.optString("amount", "")));
+                if (idKey != null && !c.optString(idKey, "").isEmpty()) copyRow(p, idKey, c.optString(idKey, ""), 14);
+                copyRow(p, "addr", c.optString("address", ""), 14);
+            }
+        } catch (Exception ignored) {}
+    }
+
     // ----- detail dialog (identical to the History app) -----
 
     private void showDetail(NodeTx n) {
@@ -173,7 +266,13 @@ public class HistoryView extends BaseView {
         addBreakdown(box, "Outputs", n.outputs);
         ScrollView sv = new ScrollView(act);
         sv.addView(box);
-        new AlertDialog.Builder(act).setTitle("Transaction").setView(sv).setPositiveButton("Close", null).show();
+        new AlertDialog.Builder(act).setTitle("Transaction").setView(sv).setPositiveButton("Close", null)
+                .setNeutralButton("Explorer ↗", (d, w) -> {
+                    try {
+                        act.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(EXPLORER_TX + n.txpowid)));
+                    } catch (Exception e) { Toast.makeText(act, "No browser available.", Toast.LENGTH_SHORT).show(); }
+                }).show();
     }
 
     private void kv(LinearLayout p, String k, String v) {
