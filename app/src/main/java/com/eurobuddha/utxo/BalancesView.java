@@ -278,8 +278,9 @@ public class BalancesView extends BaseView {
             d.setText(b.meta.description); d.setTextColor(Design.dim()); d.setTextSize(13f);
             box.addView(d);
         }
-        if (notEmpty(b.meta.externalUrl)) box.addView(linkRow("Website", b.meta.externalUrl));
-        if (notEmpty(b.meta.webvalidate)) box.addView(linkRow("Web validation", b.meta.webvalidate));
+        // Token metadata is minter-controlled: only offer to open real web urls, never tel:/sms:/custom schemes.
+        if (isHttp(b.meta.externalUrl)) box.addView(linkRow("Website", b.meta.externalUrl));
+        if (isHttp(b.meta.webvalidate)) box.addView(linkRow("Web validation", b.meta.webvalidate));
 
         new androidx.appcompat.app.AlertDialog.Builder(act)
                 .setView(sv)
@@ -332,6 +333,10 @@ public class BalancesView extends BaseView {
     }
 
     private static boolean notEmpty(String s) { return s != null && !s.isEmpty(); }
+
+    private static boolean isHttp(String u) {
+        return u != null && (u.regionMatches(true, 0, "http://", 0, 7) || u.regionMatches(true, 0, "https://", 0, 8));
+    }
 
     /** True if the amount string parses to a strictly positive number; false on null/garbage. */
     private boolean positive(String amt) {

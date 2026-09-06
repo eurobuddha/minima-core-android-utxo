@@ -16,7 +16,8 @@ public final class Identicon {
     private Identicon() {}
 
     public static Bitmap forToken(String tokenid, int px) {
-        String hex = (tokenid == null ? "" : tokenid).replaceFirst("(?i)^0x", "").toLowerCase();
+        // Keep hex digits only: a malformed tokenid must never throw out of parseInt and take Balances down.
+        String hex = (tokenid == null ? "" : tokenid).replaceFirst("(?i)^0x", "").toLowerCase().replaceAll("[^0-9a-f]", "");
         StringBuilder sb = new StringBuilder(hex);
         while (sb.length() < 32) sb.append('0');
         hex = sb.toString();
