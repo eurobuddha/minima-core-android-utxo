@@ -96,14 +96,16 @@ public class DistributeManager {
     public void onCoinsUpdated() {
         if (job == null || inFlight || !job.waiting) return;
 
-        // Give up on a stuck batch rather than hang forever.
-        if (act.chainBlock() > 0 && job.atBlock > 0 && act.chainBlock() - job.atBlock > EXPIRY_BLOCKS) {
-            abort("timed out waiting for the change coin to confirm");
-            return;
-        }
-
         Coin change = findChangeCoin();
-        if (change == null) return;   // not confirmed yet — keep waiting
+        if (change == null) {
+            // Only when the change coin is genuinely absent does the expiry apply. A job resumed after the
+            // app sat closed for >20 blocks must still chain onto a change coin that confirmed meanwhile —
+            // checking expiry first used to abort those with "timed out" and leave addresses unfunded.
+            if (act.chainBlock() > 0 && job.atBlock > 0 && act.chainBlock() - job.atBlock > EXPIRY_BLOCKS) {
+                abort("timed out waiting for the change coin to confirm");
+            }
+            return;   // not confirmed yet — keep waiting
+        }
 
         // Change coin confirmed: feed it as the sole input of the next batch.
         job.waiting = false;
