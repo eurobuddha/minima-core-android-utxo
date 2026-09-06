@@ -50,6 +50,12 @@ public class NodeApi {
         return READ_TIMEOUT_MS;
     }
 
+    private static String firstWord(String c) {
+        if (c == null) return "?";
+        int sp = c.trim().indexOf(' ');
+        return sp < 0 ? c.trim() : c.trim().substring(0, sp);
+    }
+
     private final MinimaAPI mApi;
     private final Handler mMain = new Handler(Looper.getMainLooper());
     private final PairingListener mPairing;
@@ -116,8 +122,12 @@ public class NodeApi {
                     // {"status":false,"response":"Result too long! MAX(256000)"} stub instead of the
                     // content:// hand-off — surface it as an error, never as an empty result.
                     Object resp = zResponse.opt("response");
-                    if (!zResponse.optBoolean("status", true) && resp instanceof String
-                            && ((String) resp).contains("too long")) {
+                    boolean tooLong = !zResponse.optBoolean("status", true) && resp instanceof String
+                            && ((String) resp).contains("too long");
+                    // Support diagnostic: command keyword, reply size, overflow flag. No addresses/ids.
+                    android.util.Log.i("NodeApi", firstWord(command) + " reply " + zResponse.toString().length()
+                            + " chars" + (tooLong ? " — TOO LONG (node < 1.3.0 reply cap)" : ""));
+                    if (tooLong) {
                         if (cb != null) cb.onError("Node reply exceeded the IPC limit — update Minima Core (needs 1.3.0+).");
                         return;
                     }
