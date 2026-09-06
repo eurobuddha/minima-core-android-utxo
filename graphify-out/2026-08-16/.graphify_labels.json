@@ -1,12 +1,12 @@
 {
   "0": "Design",
   "1": "Coin",
-  "2": "TxnBuilder",
+  "2": "Cb",
   "3": "HistoryView",
   "4": ".buildCard",
   "5": "SendView",
   "6": "MainActivity",
-  "7": ".ReceiveView",
+  "7": "DistributeManager",
   "8": "ImageLoader",
   "9": "android.view.View",
   "10": "HistoryDb",
@@ -17,8 +17,7 @@
   "15": "app/build.gradle",
   "16": "build.gradle",
   "17": "settings.gradle",
-  "18": "install.sh",
+  "18": "WebValidate",
   "19": "Minima UTXO Wallet (native Android)",
-  "20": "pre-commit",
   "21": "org.json.JSONObject"
 }

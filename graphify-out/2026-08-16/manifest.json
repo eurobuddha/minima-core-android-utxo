@@ -1,7 +1,7 @@
 {
   "app/build.gradle": {
-    "mtime": 1788464003.5065718,
-    "ast_hash": "28bfdf845dcff3b6f3bc016bc856bca8",
+    "mtime": 1786444409.305067,
+    "ast_hash": "7449d7eb816fcbff05857a17d57ee47b",
     "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/BalancesView.java": {
@@ -150,8 +150,8 @@
     "semantic_hash": "4ab1b50726563c630f986a494e760941"
   },
   "CLAUDE.md": {
-    "mtime": 1786883620.82608,
-    "ast_hash": "46e9035553a7ba076e59754595bc542a",
+    "mtime": 1784124679.0795376,
+    "ast_hash": "4439d09bc81851d89f9ffcecc4136dcf",
     "semantic_hash": ""
   },
   "DESIGN_MAP.md": {
@@ -202,16 +202,6 @@
   "app/src/main/res/raw/minima_icon.svg": {
     "mtime": 1782899815.1718435,
     "ast_hash": "df87d6ade37210e92ec34cf658a62940",
-    "semantic_hash": ""
-  },
-  ".githooks/install.sh": {
-    "mtime": 1786883620.6681333,
-    "ast_hash": "f31b37c6d1b5d340a5623f1715457ea0",
-    "semantic_hash": ""
-  },
-  ".githooks/pre-commit": {
-    "mtime": 1786883620.6393964,
-    "ast_hash": "03526be838d5dd774506cc1f8b47f38c",
     "semantic_hash": ""
   }
 }

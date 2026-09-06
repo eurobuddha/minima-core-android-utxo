@@ -1,4 +1,4 @@
-# Graph Report - apks/utxo  (2026-09-04)
+# Graph Report - utxo  (2026-08-16)
 
 ## Corpus Check
 - 35 files · ~28,073 words
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d85f8df5`
+- Built from commit: `e02a8af9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -49,15 +49,15 @@
 
 ## Surprising Connections (you probably didn't know these)
 - `BalancesView` --inherits--> `BaseView`  [EXTRACTED]
-  apks/utxo/app/src/main/java/com/eurobuddha/utxo/BalancesView.java → apks/utxo/app/src/main/java/com/eurobuddha/utxo/BaseView.java
+  app/src/main/java/com/eurobuddha/utxo/BalancesView.java → app/src/main/java/com/eurobuddha/utxo/BaseView.java
 - `BaseView` --references--> `MainActivity`  [EXTRACTED]
-  apks/utxo/app/src/main/java/com/eurobuddha/utxo/BaseView.java → apks/utxo/app/src/main/java/com/eurobuddha/utxo/MainActivity.java
+  app/src/main/java/com/eurobuddha/utxo/BaseView.java → app/src/main/java/com/eurobuddha/utxo/MainActivity.java
 - `HistoryView` --inherits--> `BaseView`  [EXTRACTED]
-  apks/utxo/app/src/main/java/com/eurobuddha/utxo/HistoryView.java → apks/utxo/app/src/main/java/com/eurobuddha/utxo/BaseView.java
+  app/src/main/java/com/eurobuddha/utxo/HistoryView.java → app/src/main/java/com/eurobuddha/utxo/BaseView.java
 - `ReceiveView` --inherits--> `BaseView`  [EXTRACTED]
-  apks/utxo/app/src/main/java/com/eurobuddha/utxo/ReceiveView.java → apks/utxo/app/src/main/java/com/eurobuddha/utxo/BaseView.java
+  app/src/main/java/com/eurobuddha/utxo/ReceiveView.java → app/src/main/java/com/eurobuddha/utxo/BaseView.java
 - `SendView` --inherits--> `BaseView`  [EXTRACTED]
-  apks/utxo/app/src/main/java/com/eurobuddha/utxo/SendView.java → apks/utxo/app/src/main/java/com/eurobuddha/utxo/BaseView.java
+  app/src/main/java/com/eurobuddha/utxo/SendView.java → app/src/main/java/com/eurobuddha/utxo/BaseView.java
 
 ## Import Cycles
 - None detected.
@@ -133,7 +133,7 @@ Cohesion: 0.10
 Nodes (5): JSONObject, NodeTx, Util, org.json.JSONArray, org.json.JSONObject
 
 ## Knowledge Gaps
-- **29 isolated node(s):** `install.sh script`, `ORIGINAL_LIGHT`, `ORIGINAL_DARK`, `CURRENT`, `RULE 0 (highest priority) — Follow the user's explicit instructions. They are BLOCKING, not suggestions.` (+24 more)
+- **29 isolated node(s):** `install.sh script`, `RULE 0 (highest priority) — Follow the user's explicit instructions. They are BLOCKING, not suggestions.`, `Versioning guardrail — every code change ships with a version bump`, `ORIGINAL_LIGHT`, `ORIGINAL_DARK` (+24 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -146,7 +146,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.065) - this node is a cross-community bridge._
 - **Why does `Coin` connect `Coin` to `Design`, `TxnBuilder`, `SendView`, `MainActivity`, `org.json.JSONObject`?**
   _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **What connects `install.sh script`, `ORIGINAL_LIGHT`, `ORIGINAL_DARK` to the rest of the system?**
+- **What connects `install.sh script`, `RULE 0 (highest priority) — Follow the user's explicit instructions. They are BLOCKING, not suggestions.`, `Versioning guardrail — every code change ships with a version bump` to the rest of the system?**
   _29 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Design` be split into smaller, more focused modules?**
   _Cohesion score 0.08348457350272233 - nodes in this community are weakly interconnected._
