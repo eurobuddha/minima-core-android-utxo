@@ -3,4 +3,30 @@
     </style>
 
     <style name="Theme.Utxo" parent="Base.Theme.Utxo" />
+
+    <!-- Dialog themes pinned to the app's OWN design language (Design.mode()), never the system
+         DayNight setting: the app in Original-Light on a phone in system dark mode used to get a dark
+         grey M3 dialog frame under light-mode text tokens — unreadable. Surface = Design.bg(),
+         onSurface = Design.heading()/dim(), primary = Design.accent() (button text). -->
+    <style name="Theme.Utxo.Dialog.Light" parent="Theme.Material3.Light.Dialog.Alert">
+        <item name="colorPrimary">#FFFF5A1F</item>
+        <item name="colorSurface">#FFFFFFFF</item>
+        <item name="colorSurfaceContainerHigh">#FFFFFFFF</item>
+        <item name="colorOnSurface">#FF0A0A0A</item>
+        <item name="colorOnSurfaceVariant">#FF5F5F5F</item>
+    </style>
+    <style name="Theme.Utxo.Dialog.OriginalDark" parent="Theme.Material3.Dark.Dialog.Alert">
+        <item name="colorPrimary">#FFFF5A1F</item>
+        <item name="colorSurface">#FF000000</item>
+        <item name="colorSurfaceContainerHigh">#FF000000</item>
+        <item name="colorOnSurface">#FFF5F5F5</item>
+        <item name="colorOnSurfaceVariant">#FF8E8E8E</item>
+    </style>
+    <style name="Theme.Utxo.Dialog.Native" parent="Theme.Material3.Dark.Dialog.Alert">
+        <item name="colorPrimary">#FFF7931A</item>
+        <item name="colorSurface">#FF0A0A0F</item>
+        <item name="colorSurfaceContainerHigh">#FF0A0A0F</item>
+        <item name="colorOnSurface">#FFFFFFFF</item>
+        <item name="colorOnSurfaceVariant">#FF9A9AA8</item>
+    </style>
 </resources>

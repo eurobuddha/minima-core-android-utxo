@@ -1,6 +1,5 @@
 package com.eurobuddha.utxo;
 
-import android.app.AlertDialog;
 import android.text.InputType;
 import android.view.View;
 import android.widget.EditText;
@@ -109,7 +108,7 @@ public class WalletTools {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Split.", false); return; }
         final EditText count = input("Number of coins (2–15)", "4", false);
-        new AlertDialog.Builder(act)
+        Design.dialog(act)
                 .setTitle("Split selected coins")
                 .setView(box(count))
                 .setPositiveButton("Split", (d, w) -> doSplit(sel, count.getText().toString()))
@@ -159,7 +158,7 @@ public class WalletTools {
     public void showConsolidate() {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) {
-            new AlertDialog.Builder(act)
+            Design.dialog(act)
                     .setTitle("Consolidate Minima")
                     .setMessage("Merge your Minima coins together automatically (consolidate tokenid:0x00)?")
                     .setPositiveButton("Consolidate", (d, w) -> autoConsolidate(Util.MINIMA_TOKENID))
@@ -172,7 +171,7 @@ public class WalletTools {
             return;
         }
         final String tokenName = sel.get(0).tokenName;
-        new AlertDialog.Builder(act)
+        Design.dialog(act)
                 .setTitle("Consolidate selected")
                 .setMessage("Merge the " + sel.size() + " selected " + tokenName + " coins into one?")
                 .setPositiveButton("Merge", (d, w) -> mergeSelected(sel))
@@ -234,7 +233,7 @@ public class WalletTools {
         }
         final EditText count = input("Number of addresses (2–56)", "20", false);
         final EditText amount = input("Amount to each", "", true);
-        new AlertDialog.Builder(act)
+        Design.dialog(act)
                 .setTitle("Distribute to my addresses")
                 .setView(box(count, amount))
                 .setPositiveButton("Distribute", (d, w) ->
@@ -291,7 +290,7 @@ public class WalletTools {
     public void untrackSelected() {
         final List<Coin> sel = act.selectedCoins();
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Untrack.", false); return; }
-        new AlertDialog.Builder(act)
+        Design.dialog(act)
                 .setTitle("Untrack " + sel.size() + " coin(s)?")
                 .setMessage("They'll disappear from the wallet view but remain on-chain. Re-add later by coinid.")
                 .setPositiveButton("Untrack", (d, w) -> untrackNext(sel, 0))

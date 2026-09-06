@@ -238,6 +238,7 @@ public class HistoryView extends BaseView {
         LinearLayout box = new LinearLayout(act);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(20), dp(12), dp(20), dp(12));
+        box.setBackgroundColor(Design.bg());
         kv(box, "Status", statusWord(r));
         if (r.note != null && !r.note.isEmpty()) kv(box, isFailed(r) ? "Error" : "Note", r.note);
         kv(box, "Amount", "−" + Util.tidyAmount(r.amount) + " " + r.tokenName);
@@ -251,7 +252,7 @@ public class HistoryView extends BaseView {
         addLocalCoins(box, "Outputs", r.outputs, null);
         ScrollView sv = new ScrollView(act);
         sv.addView(box);
-        AlertDialog.Builder b = new AlertDialog.Builder(act).setTitle(isFailed(r) ? "Failed transaction" : "Pending transaction")
+        AlertDialog.Builder b = Design.dialog(act).setTitle(isFailed(r) ? "Failed transaction" : "Pending transaction")
                 .setView(sv).setPositiveButton("Close", null);
         if (isFailed(r)) b.setNegativeButton("Dismiss", (d, w) -> { act.history().delete(r.internalid); render(); });
         b.show();
@@ -279,6 +280,7 @@ public class HistoryView extends BaseView {
         LinearLayout box = new LinearLayout(act);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(20), dp(12), dp(20), dp(12));
+        box.setBackgroundColor(Design.bg());
         kv(box, "Direction", n.direction);
         kv(box, "Amount", (n.incoming ? "+" : "sent".equals(n.direction) ? "−" : "") + Util.tidyAmount(n.amount) + " " + n.tokenName);
         kv(box, "Block", String.valueOf(n.block));
@@ -291,7 +293,7 @@ public class HistoryView extends BaseView {
         addBreakdown(box, "Outputs", n.outputs);
         ScrollView sv = new ScrollView(act);
         sv.addView(box);
-        new AlertDialog.Builder(act).setTitle("Transaction").setView(sv).setPositiveButton("Close", null)
+        Design.dialog(act).setTitle("Transaction").setView(sv).setPositiveButton("Close", null)
                 .setNeutralButton("Explorer ↗", (d, w) -> {
                     try {
                         act.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,

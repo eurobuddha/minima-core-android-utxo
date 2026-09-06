@@ -80,6 +80,20 @@ public final class Design {
     /** "success" maps to the accent in the original; green in the current style. */
     public static int success()    { return pick(0xFFFF5A1F, 0xFFFF5A1F, 0xFF2ECC71); }
 
+    // ---- dialogs ----
+    /** The dialog theme for the active design language (see themes.xml). */
+    public static int dialogTheme() {
+        switch (mode) {
+            case ORIGINAL_LIGHT: return R.style.Theme_Utxo_Dialog_Light;
+            case ORIGINAL_DARK:  return R.style.Theme_Utxo_Dialog_OriginalDark;
+            default:             return R.style.Theme_Utxo_Dialog_Native;
+        }
+    }
+    /** THE way to build a dialog: frame, title, buttons and inputs follow Design, not the system theme. */
+    public static androidx.appcompat.app.AlertDialog.Builder dialog(Context c) {
+        return new androidx.appcompat.app.AlertDialog.Builder(c, dialogTheme());
+    }
+
     // ---- type ----
     public static Typeface typeface()    { return isOriginal() ? Typeface.MONOSPACE : Typeface.DEFAULT; }
 }

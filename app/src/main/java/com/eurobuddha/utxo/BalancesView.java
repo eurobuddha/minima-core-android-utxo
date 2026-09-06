@@ -261,7 +261,7 @@ public class BalancesView extends BaseView {
         if (isHttp(b.meta.externalUrl)) box.addView(linkRow("Website", b.meta.externalUrl));
         if (isHttp(b.meta.webvalidate)) box.addView(linkRow("Web validation", b.meta.webvalidate));
 
-        new androidx.appcompat.app.AlertDialog.Builder(act)
+        Design.dialog(act)
                 .setView(sv)
                 .setPositiveButton("Receive", (d, w) -> act.goToTab(MainActivity.TAB_RECEIVE))
                 .setNegativeButton("Close", null)
@@ -275,7 +275,7 @@ public class BalancesView extends BaseView {
         iv.setBackgroundColor(0xFF000000);
         iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
         ImageLoader.loadFull(act, url, iv, R.drawable.ic_coin_placeholder);
-        androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(act).setView(iv).create();
+        androidx.appcompat.app.AlertDialog dlg = Design.dialog(act).setView(iv).create();
         iv.setOnClickListener(v -> dlg.dismiss());
         dlg.show();
     }

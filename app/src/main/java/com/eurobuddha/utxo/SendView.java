@@ -1,6 +1,5 @@
 package com.eurobuddha.utxo;
 
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -283,7 +282,7 @@ public class SendView extends BaseView {
         ScrollView sv = new ScrollView(act);
         sv.addView(body);
 
-        new AlertDialog.Builder(act)
+        Design.dialog(act)
                 .setTitle("Confirm transaction")
                 .setView(sv)
                 .setNegativeButton("Back", null)
