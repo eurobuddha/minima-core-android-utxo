@@ -243,6 +243,10 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onError(String message) { handleErr(message); }
         });
 
+        // Whole coin list per reload. The node's coins command has no paging parameters (its params are
+        // relevant/sendable/coinid/amount/address/tokenid/coinage/checkmempool/order — checked in
+        // core/minima-core coins.java), so a large wallet relies on minimaapi's content:// file hand-off
+        // for replies over the IPC cap. Revisit if the node ever grows max/offset here.
         node.cmd("coins relevant:true", new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
                 setPaired(true);

@@ -13,8 +13,12 @@ Native Java, talking to a local **Minima Core** node over the node's **broadcast
 - **Tools** — Split / Consolidate / Distribute (multi‑batch) / Untrack, from the selection bar.
 - **Balances** — rich token cards (icon, sendable/locked, decimals, description).
 - **Receive** — address + QR.
-- **History** — sent + received, classified client‑side from the node's `history` (bounded + lazy so it
-  never overloads the node), with explorer links on confirmed txpowids.
+- **History** — sent + received from the node's `history` (bounded + lazy so it never overloads the
+  node), plus this wallet's own postings on top (posting / posted / failed, with the node's error and
+  every input coinid copyable); a posting is confirmed against the on‑chain txpow that spent its inputs,
+  and confirmed transactions link to the Explorer.
+- **Burn** — a Minima burn is realised as the inputs−outputs gap only (never `txnpostburn` as well, which
+  would burn twice from a second coin).
 - Dark + orange theme.
 
 ## Build

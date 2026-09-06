@@ -89,12 +89,13 @@ public class ReceiveView extends BaseView {
             try {
                 int size = 480;
                 BitMatrix m = new QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size);
-                bmp = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565);
-                for (int x = 0; x < size; x++) {
-                    for (int y = 0; y < size; y++) {
-                        bmp.setPixel(x, y, m.get(x, y) ? Color.BLACK : Color.WHITE);
-                    }
+                int[] px = new int[size * size];
+                for (int y = 0; y < size; y++) {
+                    int rowOff = y * size;
+                    for (int x = 0; x < size; x++) px[rowOff + x] = m.get(x, y) ? Color.BLACK : Color.WHITE;
                 }
+                bmp = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565);
+                bmp.setPixels(px, 0, size, 0, 0, size, size);   // one call, not 230k setPixel calls
             } catch (Exception e) {
                 bmp = null;
             }
