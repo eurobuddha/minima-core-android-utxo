@@ -221,12 +221,11 @@ public class WalletView extends BaseView {
             return card;
         }
 
-        // Minima (0x00) first, then tokens; confirmed before pending, amount descending — like the dapp.
+        // Minima (0x00) first, then tokens; amount descending — like the dapp.
         List<Coin> sorted = new ArrayList<>(addrCoins);
         Collections.sort(sorted, (a, b) -> {
             boolean am = Util.isMinima(a.tokenid), bm = Util.isMinima(b.tokenid);
             if (am != bm) return am ? -1 : 1;
-            if (a.confirmed != b.confirmed) return a.confirmed ? -1 : 1;
             try { return new BigDecimal(b.amount).compareTo(new BigDecimal(a.amount)); } catch (Exception e) { return 0; }
         });
         for (int i = 0; i < sorted.size(); i++) card.addView(buildCoinRow(sorted.get(i), i == sorted.size() - 1));
@@ -330,9 +329,9 @@ public class WalletView extends BaseView {
     }
 
     /** .utxo-row: brutalist square checkbox + bold mono amount (right) + token tag + status; bottom divider
-     *  except on the last row; selected → accent-soft; unconfirmed/watch dimmed and not selectable. */
+     *  except on the last row; selected → accent-soft; watch-only dimmed and not selectable. */
     private View buildCoinRow(Coin c, boolean last) {
-        boolean usable = c.confirmed && c.sendable;      // only spendable coins toggle (keeps sends valid)
+        boolean usable = c.sendable;      // only spendable coins toggle (keeps sends valid)
         boolean selected = act.isSelected(c.coinid);
         int bg = selected ? Design.accentSoft() : Design.bg();
 
@@ -371,10 +370,10 @@ public class WalletView extends BaseView {
         row.addView(tok);
 
         TextView st = new TextView(act);
-        st.setText(!c.confirmed ? "PENDING" : (c.sendable ? "·" : "WATCH"));
+        st.setText(c.sendable ? "·" : "WATCH");
         st.setTypeface(Design.typeface());
         st.setTextSize(9f);
-        st.setTextColor(!c.confirmed ? Design.amber() : Design.dim2());
+        st.setTextColor(Design.dim2());
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(WRAP, WRAP);
         slp.leftMargin = dp(8);
         st.setLayoutParams(slp);

@@ -103,12 +103,6 @@ public class HistoryDb extends SQLiteOpenHelper {
         getWritableDatabase().delete(TABLE, "internalid=?", new String[]{internalid});
     }
 
-    /** Return the most recent rows (newest id first), capped at limit. */
-    public List<HistoryRow> list(int limit) {
-        return query("SELECT id,internalid,txnid,status,recipient,amount,tokenid,tokenname,ts,note," +
-                "inputs,outputs,changeaddr,burn FROM " + TABLE + " ORDER BY id DESC LIMIT " + limit);
-    }
-
     /** Rows this wallet posted that are NOT yet matched to an on-chain transaction (posting / posted /
      *  unknown / error) — shown at the top of History. Confirmed rows appear as their nodetx entry instead. */
     public List<HistoryRow> listOpen(int limit) {

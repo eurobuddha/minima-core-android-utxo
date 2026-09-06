@@ -53,23 +53,6 @@ public final class Identicon {
         cv.drawRect(x, y, x + cell, y + cell, p);
     }
 
-    /** The built-in Minima glyph (circle + M), stroked in the given colour. */
-    public static Bitmap minima(int px, int color) {
-        Bitmap bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
-        Canvas cv = new Canvas(bmp);
-        float s = px / 48f;
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setStyle(Paint.Style.STROKE); p.setColor(color);
-        p.setStrokeWidth(2.2f * s);
-        cv.drawCircle(24 * s, 24 * s, 20 * s, p);
-        p.setStrokeWidth(2.6f * s); p.setStrokeJoin(Paint.Join.ROUND); p.setStrokeCap(Paint.Cap.ROUND);
-        Path path = new Path();
-        path.moveTo(14 * s, 32 * s); path.lineTo(14 * s, 18 * s); path.lineTo(24 * s, 26 * s);
-        path.lineTo(34 * s, 18 * s); path.lineTo(34 * s, 32 * s);
-        cv.drawPath(path, p);
-        return bmp;
-    }
-
     /** The web-validation checkmark badge: white ring, blue disc, white tick. */
     public static Bitmap checkBadge(int px) {
         Bitmap bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);

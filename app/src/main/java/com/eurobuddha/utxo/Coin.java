@@ -11,7 +11,8 @@ public class Coin {
     public String tokenid;
     public String amount;       // human-readable (Minima "amount" or token "tokenamount")
     public String tokenName;
-    public boolean confirmed = true;
+    // The node's "coins" command returns confirmed, unspent coins only (verified against the node's
+    // command classes) — there is no per-coin confirmation flag. Spendability is gated by the sendable query.
     public boolean sendable = false;   // set from "coins relevant:true sendable:true"
 
     public static Coin from(JSONObject c) {
@@ -25,11 +26,6 @@ public class Coin {
         x.amount    = minima ? c.optString("amount", "0")
                              : c.optString("tokenamount", c.optString("amount", "0"));
         x.tokenName = Util.tokenName(c.opt("token"), x.tokenid);
-
-        // The node's "coins" command returns confirmed, unspent coins — the Coin JSON has no
-        // per-coin confirmation flag (verified against the node's command classes), so any coin
-        // we get back here is confirmed. Spendability is gated separately by the sendable query.
-        x.confirmed = true;
         return x;
     }
 }

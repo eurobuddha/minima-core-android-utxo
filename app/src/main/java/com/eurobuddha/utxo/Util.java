@@ -52,20 +52,6 @@ public final class Util {
         return "Token";
     }
 
-    /** Pull a txpowid out of a posted-transaction response, falling back to the given id. */
-    public static String extractTxpowid(JSONObject json, String fallback) {
-        JSONObject resp = json.optJSONObject("response");
-        if (resp != null) {
-            String t = resp.optString("txpowid", "");
-            if (t.isEmpty()) {
-                JSONObject txp = resp.optJSONObject("txpow");
-                if (txp != null) t = txp.optString("txpowid", "");
-            }
-            if (!t.isEmpty()) return t;
-        }
-        return fallback;
-    }
-
     /** Trim trailing zeros from a decimal amount string for tidy display. */
     public static String tidyAmount(String amt) {
         if (amt == null || amt.isEmpty()) return "0";

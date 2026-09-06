@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         blockNo = findViewById(R.id.blockNo);
         ((Button) findViewById(R.id.openNodeBtn)).setOnClickListener(v -> openMinimaCore());
 
-        // Design-language toggle (Original Light → Original Dark → Current).
+        // Design-language toggle (Original Light → Original Dark → Native), cycles on tap.
         TextView designToggle = findViewById(R.id.designToggle);
         designToggle.setOnClickListener(v -> { Design.set(this, Design.next()); recreate(); });
 
@@ -467,8 +467,11 @@ public class MainActivity extends AppCompatActivity {
     public String selectedTokenid() { return selectedTokenid; }
     public void goToTab(int pos) { viewPager.setCurrentItem(pos); }
     private String designTag() {
-        // Current is our "Dark"; the original brutalist palette is "Light".
-        return Design.mode() == Design.Mode.ORIGINAL_LIGHT ? "LIGHT" : "DARK";
+        switch (Design.mode()) {
+            case ORIGINAL_LIGHT: return "LIGHT";     // the dapp's brutalist light palette
+            case ORIGINAL_DARK:  return "DARK";      // its photo-negative
+            default:             return "NATIVE";    // the native dark look
+        }
     }
 
     public int chainBlock() { return chainBlock; }

@@ -17,10 +17,6 @@ public class MainPager extends PagerAdapter {
         this.titles = titles;
     }
 
-    public BaseView viewAt(int pos) {
-        return views[pos];
-    }
-
     @Override
     public int getCount() {
         return views.length;

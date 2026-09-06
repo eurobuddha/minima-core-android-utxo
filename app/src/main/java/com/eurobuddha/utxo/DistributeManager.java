@@ -234,7 +234,7 @@ public class DistributeManager {
      *  else by address+amount — so the next batch can spend it. Null until it confirms on-chain. */
     private Coin findChangeCoin() {
         for (Coin c : act.coins()) {
-            if (!c.sendable || !c.confirmed) continue;
+            if (!c.sendable) continue;
             if (!job.tokenid.equals(c.tokenid)) continue;
             if (!job.expectedChangeCoinId.isEmpty()) {
                 if (job.expectedChangeCoinId.equals(c.coinid)) return c;   // exact, unambiguous

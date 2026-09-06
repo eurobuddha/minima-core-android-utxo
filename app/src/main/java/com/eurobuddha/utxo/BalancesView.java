@@ -203,27 +203,6 @@ public class BalancesView extends BaseView {
         return ld;
     }
 
-    /** The real Minima mark, rasterised from the bundled official SVG (native Minima carries no on-chain icon). */
-    private Bitmap renderMinimaLogo(int px) {
-        try {
-            java.io.InputStream is = act.getResources().openRawResource(R.raw.minima_icon);
-            com.caverock.androidsvg.SVG svg = com.caverock.androidsvg.SVG.getFromInputStream(is);
-            is.close();
-            float dw = svg.getDocumentWidth(), dh = svg.getDocumentHeight();
-            int w = px, h = px;
-            if (dw > 0 && dh > 0) {
-                if (dw >= dh) { w = px; h = Math.max(1, Math.round(px * dh / dw)); }
-                else { h = px; w = Math.max(1, Math.round(px * dw / dh)); }
-            }
-            svg.setDocumentWidth(w); svg.setDocumentHeight(h);
-            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-            svg.renderToCanvas(new android.graphics.Canvas(bmp));
-            return bmp;
-        } catch (Throwable t) {
-            return null;
-        }
-    }
-
     /** Full-detail dialog for one token: large icon (tap → full-res), all metadata, and a Receive action. */
     private void showTokenDetail(TokenBalance b) {
         android.widget.ScrollView sv = new android.widget.ScrollView(act);

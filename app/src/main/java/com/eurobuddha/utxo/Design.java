@@ -38,18 +38,13 @@ public final class Design {
 
     public static Mode mode() { return mode; }
     public static boolean isOriginal() { return mode != Mode.CURRENT; }
-    public static boolean isDark() { return mode == Mode.ORIGINAL_DARK || mode == Mode.CURRENT; }
 
-    /** Toggle Dark (current) ↔ Light (the original brutalist light look). */
+    /** Cycle the three design languages: Original Light → Original Dark → Current (native) → … */
     public static Mode next() {
-        return mode == Mode.ORIGINAL_LIGHT ? Mode.CURRENT : Mode.ORIGINAL_LIGHT;
-    }
-
-    public static String label() {
         switch (mode) {
-            case ORIGINAL_LIGHT: return "Original · Light";
-            case ORIGINAL_DARK:  return "Original · Dark";
-            default:             return "Current";
+            case ORIGINAL_LIGHT: return Mode.ORIGINAL_DARK;
+            case ORIGINAL_DARK:  return Mode.CURRENT;
+            default:             return Mode.ORIGINAL_LIGHT;
         }
     }
 
@@ -85,12 +80,6 @@ public final class Design {
     /** "success" maps to the accent in the original; green in the current style. */
     public static int success()    { return pick(0xFFFF5A1F, 0xFFFF5A1F, 0xFF2ECC71); }
 
-    // ---- metrics / type ----
+    // ---- type ----
     public static Typeface typeface()    { return isOriginal() ? Typeface.MONOSPACE : Typeface.DEFAULT; }
-    public static Typeface typefaceBold(){ return isOriginal() ? Typeface.create(Typeface.MONOSPACE, Typeface.BOLD) : Typeface.DEFAULT_BOLD; }
-    /** Corner radius in dp — the original is hard-edged (0). */
-    public static float radiusDp()       { return isOriginal() ? 0f : 6f; }
-    /** Micro-labels are UPPERCASE + tracked in the original. */
-    public static boolean upperLabels()  { return isOriginal(); }
-    public static float labelTracking()  { return isOriginal() ? 0.12f : 0.0f; }
 }
