@@ -56,7 +56,7 @@ public class TxnBuilder {
     private final List<Out> outputs;
     private final String tokenid;
     private final boolean minima;
-    private final String burn;          // Minima-only burn (txnpostburn); null/"0" = none
+    private final String burn;          // Minima-only burn, informational: it is realised as the inputs−outputs gap, never sent as txnpostburn
     private final Done done;
     private final String txid;
 
@@ -108,13 +108,12 @@ public class TxnBuilder {
 
     private void sign() {
         stage("Signing & posting (proof-of-work — can take a moment)…");
-        // Burn is only valid for Minima sends and only when > 0 (matches the dapp's signAndPost).
-        String burnParam = "";
-        if (minima && burn != null && !burn.isEmpty()) {
-            try { if (new java.math.BigDecimal(burn).signum() > 0) burnParam = " txnpostburn:" + burn; }
-            catch (Exception ignored) {}
-        }
-        act.node().cmd("txnsign id:" + txid + " publickey:auto txnpostauto:true txndelete:true" + burnParam,
+        // BURN: the caller already reserves the burn by leaving a gap between inputs and outputs
+        // (change = inputs − amount − burn); the node burns that surplus (Transaction.getBurn).
+        // We deliberately do NOT also pass txnpostburn — that makes the node build a SECOND burn
+        // transaction from another wallet coin, so the user burnt 2× and spent a coin they never
+        // picked. (The utxoWallet dapp had the same double burn; fixed there in 1.0.54.)
+        act.node().cmd("txnsign id:" + txid + " publickey:auto txnpostauto:true txndelete:true",
                 new NodeApi.Cb() {
                     @Override public void onResult(JSONObject json) {
                         done.onPosted(parseTxpowid(json), parseOutputs(json));
