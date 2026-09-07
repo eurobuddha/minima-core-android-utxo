@@ -36,9 +36,18 @@ public class WalletTools {
 
     // ---- shared helpers ----
 
+    /** Views placed inside a dialog must be built on the DIALOG's themed context, not the activity's
+     *  DayNight one — otherwise an EditText on a Light dialog inherits the phone's dark-theme text colour
+     *  (light grey on white; seen on the S23). */
+    private android.content.Context dialogCtx() {
+        return new android.view.ContextThemeWrapper(act, Design.dialogTheme());
+    }
+
     /** Build a numeric EditText (decimal toggles the decimal-point flag) for the dialog forms. */
     private EditText input(String hint, String preset, boolean decimal) {
-        EditText e = new EditText(act);
+        EditText e = new EditText(dialogCtx());
+        e.setTextColor(Design.text());
+        e.setHintTextColor(Design.dim());
         e.setHint(hint);
         e.setText(preset);
         e.setInputType(decimal
@@ -49,7 +58,7 @@ public class WalletTools {
 
     /** Wrap dialog children in a padded vertical layout. */
     private LinearLayout box(View... children) {
-        LinearLayout l = new LinearLayout(act);
+        LinearLayout l = new LinearLayout(dialogCtx());
         l.setOrientation(LinearLayout.VERTICAL);
         int pad = (int) (20 * act.getResources().getDisplayMetrics().density);
         l.setPadding(pad, pad / 2, pad, 0);
