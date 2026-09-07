@@ -124,9 +124,13 @@ public class NodeApi {
                     Object resp = zResponse.opt("response");
                     boolean tooLong = !zResponse.optBoolean("status", true) && resp instanceof String
                             && ((String) resp).contains("too long");
-                    // Support diagnostic: command keyword, reply size, overflow flag. No addresses/ids.
-                    android.util.Log.i("NodeApi", firstWord(command) + " reply " + zResponse.toString().length()
-                            + " chars" + (tooLong ? " — TOO LONG (node < 1.3.0 reply cap)" : ""));
+                    // Support diagnostic (command keyword, reply size, overflow flag; no addresses/ids).
+                    // Serialising a 180K reply on the UI thread is not free, so only when enabled:
+                    //   adb shell setprop log.tag.NodeApi DEBUG   then   adb logcat -s NodeApi
+                    if (android.util.Log.isLoggable("NodeApi", android.util.Log.DEBUG)) {
+                        android.util.Log.d("NodeApi", firstWord(command) + " reply " + zResponse.toString().length()
+                                + " chars" + (tooLong ? " — TOO LONG (node < 1.3.0 reply cap)" : ""));
+                    }
                     if (tooLong) {
                         if (cb != null) cb.onError("Node reply exceeded the IPC limit — update Minima Core (needs 1.3.0+).");
                         return;

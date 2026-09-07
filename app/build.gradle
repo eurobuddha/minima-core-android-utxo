@@ -10,8 +10,8 @@ android {
         applicationId "com.eurobuddha.utxo"
         minSdk 28
         targetSdk 35
-        versionCode 427
-        versionName "0.4.27"
+        versionCode 428
+        versionName "0.4.28"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
