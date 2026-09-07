@@ -71,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int COINS_EVERY = 10;         // blocks between coin refreshes in sliced mode (old node)
     private String coinsMode = "whole";                // last CoinLoader mode
     private boolean coinsDirty = true;                 // something changed → refetch coins even in sliced mode
+    private boolean coinsLoading = false;              // a CoinLoader is walking its slices — never start a second
     private int lastCoinsBlock = -1;
     private String coinsNote = "";                     // Wallet-tab banner when coins came sliced / incomplete   // an unanswered txnsign whose inputs are still unspent after this = not posted
     private String circulatingSupply = "";             // status.minima — live total Minima (1bn − burnt)
@@ -262,12 +263,17 @@ public class MainActivity extends AppCompatActivity {
         // mode is many IPC calls, so it only re-runs when something changed (NEWBALANCE, a send/tool,
         // onResume, an active Distribute) or every COINS_EVERY blocks — not on every block.
         boolean sliced = !"whole".equals(coinsMode);
-        boolean fetchCoins = !sliced || coinsDirty || chainBlock - lastCoinsBlock >= COINS_EVERY
-                || (distribute != null && distribute.isActive());
-        if (fetchCoins) {
+        // A waiting Distribute needs to see its change coin: poll more often in sliced mode, never every block.
+        int every = (distribute != null && distribute.isActive()) ? Math.max(1, COINS_EVERY / 3) : COINS_EVERY;
+        boolean fetchCoins = !sliced || coinsDirty || chainBlock - lastCoinsBlock >= every;
+        if (fetchCoins && coinsLoading) {
+            coinsDirty = true;   // one loader at a time; the running one re-triggers a reload when it finishes
+        } else if (fetchCoins) {
             coinsDirty = false;
+            coinsLoading = true;
             CoinLoader.load(this, new CoinLoader.Done() {
                 @Override public void onCoins(List<Coin> got, Set<String> sendable, int expected, String mode) {
+                    coinsLoading = false;
                     setPaired(true);
                     coinsMode = mode;
                     lastCoinsBlock = chainBlock;
@@ -292,8 +298,9 @@ public class MainActivity extends AppCompatActivity {
                     refreshAll();
                     // Advance any running multi-batch Distribute job (change coin may have confirmed).
                     if (distribute != null) distribute.onCoinsUpdated();
+                    if (coinsDirty) requestReload();   // a NEWBALANCE / send landed mid-load: go again once
                 }
-                @Override public void onError(String message) { coinsDirty = true; handleErr(message); }
+                @Override public void onError(String message) { coinsLoading = false; coinsDirty = true; handleErr(message); }
             });
         }
 
