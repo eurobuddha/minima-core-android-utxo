@@ -98,6 +98,13 @@ public class HistoryDb extends SQLiteOpenHelper {
         getWritableDatabase().update(TABLE, v, "internalid=?", new String[]{internalid});
     }
 
+    /** Record the inputs of a node-driven posting after the fact (consolidate), so the resolver can match it. */
+    public void setInputs(String internalid, String inputsJson) {
+        ContentValues v = new ContentValues();
+        v.put("inputs", inputsJson);
+        getWritableDatabase().update(TABLE, v, "internalid=?", new String[]{internalid});
+    }
+
     /** Remove a row (e.g. user dismisses a failed send). */
     public void delete(String internalid) {
         getWritableDatabase().delete(TABLE, "internalid=?", new String[]{internalid});

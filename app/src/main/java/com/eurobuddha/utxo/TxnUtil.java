@@ -83,6 +83,33 @@ public final class TxnUtil {
         return arr.toString();
     }
 
+    /** The inputs of a posted txpow as the history-row JSON [{coinid,address,amount}] — for node-driven
+     *  commands (consolidate) whose coins we didn't pick, so the resolver can still match the row.
+     *  Accepts {response:{txpow:{…}}} or {response:{body:…}}; "" when there is no txpow in the reply. */
+    public static String inputsJsonFromTxpow(JSONObject json) {
+        try {
+            JSONObject resp = json.optJSONObject("response");
+            if (resp == null) return "";
+            JSONObject txpow = resp.optJSONObject("txpow");
+            if (txpow == null) txpow = resp;
+            JSONObject body = txpow.optJSONObject("body");
+            JSONObject txn = body == null ? null : body.optJSONObject("txn");
+            JSONArray ins = txn == null ? null : txn.optJSONArray("inputs");
+            if (ins == null || ins.length() == 0) return "";
+            JSONArray arr = new JSONArray();
+            for (int i = 0; i < ins.length(); i++) {
+                JSONObject c = ins.optJSONObject(i);
+                if (c == null) continue;
+                JSONObject o = new JSONObject();
+                o.put("coinid", c.optString("coinid", ""));
+                o.put("address", c.optString("miniaddress", c.optString("address", "")));
+                o.put("amount", c.optString("tokenamount", c.optString("amount", "")));
+                arr.put(o);
+            }
+            return arr.toString();
+        } catch (Exception e) { return ""; }
+    }
+
     /** Fetch n addresses by calling getaddress sequentially (the node cycles its defaults). */
     public static void fetchAddresses(MainActivity act, int n, AddrList cb) {
         fetchNext(act, n, new ArrayList<>(), cb);

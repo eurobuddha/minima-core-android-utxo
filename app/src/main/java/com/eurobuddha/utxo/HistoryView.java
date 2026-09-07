@@ -254,7 +254,9 @@ public class HistoryView extends BaseView {
         sv.addView(box);
         AlertDialog.Builder b = Design.dialog(act).setTitle(isFailed(r) ? "Failed transaction" : "Pending transaction")
                 .setView(sv).setPositiveButton("Close", null);
-        if (isFailed(r)) b.setNegativeButton("Dismiss", (d, w) -> { act.history().delete(r.internalid); render(); });
+        // Dismiss: failed rows, and any open row older than a day (something the resolver could never match).
+        boolean stale = System.currentTimeMillis() - r.ts > 24L * 60 * 60 * 1000;
+        if (isFailed(r) || stale) b.setNegativeButton("Dismiss", (d, w) -> { act.history().delete(r.internalid); render(); });
         b.show();
     }
 
