@@ -21,7 +21,7 @@ public class NodeTx {
     public String tokenid, tokenName, amount;   // primary token moved (amount = absolute value)
     public String deltas;           // JSON { tokenid: signedAmount } — full per-token effect
     public String counterparty;     // address of the other side
-    public String inputs, outputs;  // JSON arrays [{coinid, addr, amount, tokenid}]
+    public String inputs, outputs;  // JSON arrays [{coinid, addr (Mx), address (0x), amount, tokenid}]
 
     public static NodeTx from(JSONObject txpow, JSONObject detail) {
         NodeTx e = new NodeTx();
@@ -83,6 +83,7 @@ public class NodeTx {
                 JSONObject o = new JSONObject();
                 o.put("coinid", c.optString("coinid", ""));
                 o.put("addr", c.optString("miniaddress", c.optString("address", "")));
+                o.put("address", c.optString("address", ""));   // 0x form too: local rows may record either
                 o.put("amount", c.optString("amount", c.optString("tokenamount", "")));
                 o.put("tokenid", c.optString("tokenid", "0x00"));
                 out.put(o);

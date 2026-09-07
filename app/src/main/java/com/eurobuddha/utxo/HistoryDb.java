@@ -23,7 +23,7 @@ public class HistoryDb extends SQLiteOpenHelper {
     public static final String STATUS_UNKNOWN   = "unknown";   // txnsign timed out: may or may not have posted
 
     private static final String DB_NAME = "utxo_history.db";
-    private static final int    DB_VERSION = 5;     // v5: nodetx inputs/outputs carry coinid (resolver key)
+    private static final int    DB_VERSION = 6;     // v6: nodetx outputs carry both address forms (resolver output match)
     private static final String TABLE = "history";
 
     public HistoryDb(Context ctx) {
@@ -62,7 +62,7 @@ public class HistoryDb extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldV, int newV) {
         // nodetx is a re-fetchable cache of on-chain history — recreate it if its schema changed.
-        if (oldV < 5) db.execSQL("DROP TABLE IF EXISTS nodetx");
+        if (oldV < 6) db.execSQL("DROP TABLE IF EXISTS nodetx");
         // Preserve the local send-records (history) table; (re)create tables; add the v2 send columns.
         onCreate(db);
         for (String col : new String[]{"inputs TEXT", "outputs TEXT", "changeaddr TEXT", "burn TEXT"}) {
@@ -155,28 +155,50 @@ public class HistoryDb extends SQLiteOpenHelper {
     }
 
     /**
-     * The resolver: a freshly seen on-chain transaction CONFIRMS any local row whose recorded input
-     * coinids it spent. Local rows never store the txnsign-response id (not the on-chain id); this is
-     * where the real txpowid lands. Returns true if a row was confirmed.
+     * The resolver. A freshly seen on-chain transaction that spent a local row's recorded input coinids
+     * is either THAT row's transaction (its recorded output addresses appear in the txpow → CONFIRMED,
+     * real txpowid stored) or a different transaction that re-spent the same coins (no output overlap →
+     * the local one can never post → ERROR). Inputs alone are not enough: a timed-out send that never
+     * posted, followed by a re-send of the same coins, used to get confirmed against the second txpow.
+     * Rows with no recorded outputs (node-driven consolidate) confirm on inputs alone.
+     * Returns true if any row changed.
      */
     public boolean resolve(NodeTx n) {
         java.util.Set<String> spent = coinIds(n.inputs, "coinid");
         if (spent.isEmpty()) return false;
+        java.util.Set<String> outAddrs = coinIds(n.outputs, "addr");
+        outAddrs.addAll(coinIds(n.outputs, "address"));
         boolean any = false;
         for (HistoryRow r : listOpen(500)) {
             if (STATUS_ERROR.equals(r.status)) continue;          // an errored row never posted
             java.util.Set<String> mine = coinIds(r.inputs, "coinid");
             mine.retainAll(spent);
             if (mine.isEmpty()) continue;
-            update(r.internalid, STATUS_CONFIRMED, n.txpowid, "");
+            java.util.Set<String> want = coinIds(r.outputs, "address");
+            if (want.isEmpty()) {
+                update(r.internalid, STATUS_CONFIRMED, n.txpowid, "");
+                any = true;
+                continue;
+            }
+            boolean outMatch = false;
+            for (String a : want) if (containsIgnoreCase(outAddrs, a)) { outMatch = true; break; }
+            if (outMatch) update(r.internalid, STATUS_CONFIRMED, n.txpowid, "");
+            else update(r.internalid, STATUS_ERROR, null,
+                    "Not posted: these coins were spent by a different transaction (" + n.txpowid + ").");
             any = true;
         }
         return any;
     }
 
+    private static boolean containsIgnoreCase(java.util.Set<String> set, String v) {
+        for (String s : set) if (s.equalsIgnoreCase(v)) return true;
+        return false;
+    }
+
     /**
      * Rows left UNKNOWN (the node didn't answer txnsign in time) are settled by the live coin set:
-     * inputs gone → it posted (POSTED; the resolver confirms it when History sees the txpow);
+     * inputs gone → SOMETHING spent them; the row stays "posted?" with a note and the resolver decides
+     * (same txpow → confirmed, different txpow → error) — never promoted to POSTED on inputs alone;
      * inputs all still unspent after {@code staleMs} → it never posted (ERROR). Returns true on change.
      */
     public boolean reconcileUnknown(java.util.Set<String> liveCoinIds, long staleMs) {
@@ -188,7 +210,11 @@ public class HistoryDb extends SQLiteOpenHelper {
             if (mine.isEmpty()) continue;
             boolean anyLive = false, allLive = true;
             for (String id : mine) { if (liveCoinIds.contains(id)) anyLive = true; else allLive = false; }
-            if (!anyLive) { update(r.internalid, STATUS_POSTED, null, "posted (node reply timed out; inputs spent)"); any = true; }
+            if (!anyLive) {
+                if (!"inputs spent — matching on-chain…".equals(r.note)) {
+                    update(r.internalid, STATUS_UNKNOWN, null, "inputs spent — matching on-chain…"); any = true;
+                }
+            }
             else if (allLive && now - r.ts > staleMs) {
                 update(r.internalid, STATUS_ERROR, null, "The node didn't answer in time and the coins are still unspent — not posted."); any = true;
             }
