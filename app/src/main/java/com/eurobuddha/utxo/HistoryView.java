@@ -110,7 +110,7 @@ public class HistoryView extends BaseView {
                 // Shrink + retry ONLY for the oversized-reply case. Any other error (node offline, not
                 // enabled, rejected) must not ratchet the page size down nor chain immediate retries —
                 // that used to cost four back-to-back 30 s timeouts and pin pageMax at 1 for the session.
-                if (message != null && message.contains("exceeded the IPC limit") && pageMax > 1) {
+                if (NodeApi.isTooLong(message) && pageMax > 1) {
                     pageMax = Math.max(1, pageMax / 2);
                     shrunkAtBlock = act.chainBlock();
                     fetchPage(offset);

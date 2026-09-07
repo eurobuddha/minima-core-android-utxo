@@ -36,6 +36,9 @@ public class NodeApi {
      *  proof-of-work and post; callers must treat it as unknown, never as "not sent". */
     public static final String ERR_TIMEOUT = "Minima Core didn't respond. Is it installed, running and enabled?";
     public static boolean isTimeout(String message) { return ERR_TIMEOUT.equals(message); }
+    /** A pre-1.3.0 node answered an oversized reply with its "Result too long" stub (256,000-char cap). */
+    public static final String ERR_TOO_LONG = "Node reply exceeded the IPC limit — update Minima Core (needs 1.3.0+).";
+    public static boolean isTooLong(String message) { return ERR_TOO_LONG.equals(message); }
 
     private static final long READ_TIMEOUT_MS = 30000;
     private static final long WRITE_TIMEOUT_MS = 180000;   // build + proof-of-work + post is slow on mobile
@@ -132,7 +135,7 @@ public class NodeApi {
                                 + " chars" + (tooLong ? " — TOO LONG (node < 1.3.0 reply cap)" : ""));
                     }
                     if (tooLong) {
-                        if (cb != null) cb.onError("Node reply exceeded the IPC limit — update Minima Core (needs 1.3.0+).");
+                        if (cb != null) cb.onError(ERR_TOO_LONG);
                         return;
                     }
                     // Any other status:false is a REJECTED command ({"status":false,"error":"..."}) — it must

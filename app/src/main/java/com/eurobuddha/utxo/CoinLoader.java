@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * Loads the wallet's coin set within the node's reply cap. A node older than 1.3.0 has no file
  * hand-off, so any reply over 256,000 chars comes back as the "Result too long" stub (NodeApi turns
- * it into an error containing {@link #TOO_LONG}). Token coins embed their token metadata, so even a
+ * it into {@link NodeApi#ERR_TOO_LONG}). Token coins embed their token metadata, so even a
  * ~200-coin wallet overflows the single {@code coins relevant:true}. Tiers:
  *   1. whole list                                   coins relevant:true
  *   2. per token (from balance)                      coins relevant:true tokenid:T
@@ -28,8 +28,7 @@ final class CoinLoader {
         void onError(String message);
     }
 
-    static final String TOO_LONG = "exceeded the IPC limit";     // substring of NodeApi's stub error
-    static boolean isTooLong(String m) { return m != null && m.contains(TOO_LONG); }
+    static boolean isTooLong(String m) { return NodeApi.isTooLong(m); }
 
     private interface Ok { void run(); }
     private interface Fail { void run(String message); }
