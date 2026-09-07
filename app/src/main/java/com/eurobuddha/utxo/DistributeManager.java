@@ -206,7 +206,10 @@ public class DistributeManager {
             @Override public void onUnknown(String message) {
                 act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, "node reply timed out — awaiting settlement");
                 inFlight = false;
-                if (!hasChange) { complete(); return; }     // nothing to chain on; the coin set settles the row
+                if (!hasChange) {   // nothing to chain on; the coin set + resolver settle the row in History
+                    complete("Distribute: final batch got no reply from the node in time — see 'posted?' in History.");
+                    return;
+                }
                 job.expectedChangeCoinId = "";
                 job.nextChangeAddr = changeAddr;
                 job.expectedChangeAmt = changeStr;
@@ -251,11 +254,13 @@ public class DistributeManager {
     // ===== terminal states =====
 
     /** All batches done: clear persisted state and refresh the UI. */
-    private void complete() {
+    private void complete() { complete("Distribute complete."); }
+
+    private void complete(String message) {
         inFlight = false;
         DistributeJob.clear(act);
         job = null;
-        toast("Distribute complete.");
+        toast(message);
         act.refreshTools();
     }
 

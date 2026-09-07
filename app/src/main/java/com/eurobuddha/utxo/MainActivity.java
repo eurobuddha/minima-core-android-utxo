@@ -67,13 +67,13 @@ public class MainActivity extends AppCompatActivity {
     private int chainBlock = 0;
     private int lastScriptsBlock = -1;                 // throttle the ~27 KB scripts fetch
     private static final int SCRIPTS_EVERY = 20;       // blocks between scripts refreshes
-    private static final long UNKNOWN_STALE_MS = 15 * 60 * 1000L;
+    private static final long UNKNOWN_STALE_MS = 15 * 60 * 1000L;   // an unanswered txnsign whose inputs are still unspent after this = not posted
     private static final int COINS_EVERY = 10;         // blocks between coin refreshes in sliced mode (old node)
     private String coinsMode = "whole";                // last CoinLoader mode
     private boolean coinsDirty = true;                 // something changed → refetch coins even in sliced mode
     private boolean coinsLoading = false;              // a CoinLoader is walking its slices — never start a second
     private int lastCoinsBlock = -1;
-    private String coinsNote = "";                     // Wallet-tab banner when coins came sliced / incomplete   // an unanswered txnsign whose inputs are still unspent after this = not posted
+    private String coinsNote = "";                     // Wallet-tab banner when coins came sliced / incomplete
     private String circulatingSupply = "";             // status.minima — live total Minima (1bn − burnt)
 
     // ----- selection state (single tokenid at a time) -----
@@ -281,7 +281,8 @@ public class MainActivity extends AppCompatActivity {
                     coins.addAll(got);
                     sendableIds.clear();
                     sendableIds.addAll(sendable);
-                    int missing = expected >= 0 ? expected - coins.size() : 0;
+                    // Only the per-address tier can skip a slice, so only there can coins be missing.
+                    int missing = ("per-address".equals(mode) && expected >= 0) ? expected - coins.size() : 0;
                     if (missing > 0) {
                         coinsNote = missing + (missing == 1 ? " coin is" : " coins are") + " not shown: this Minima Core (<1.3.0) caps "
                                 + "replies and one slice was still too big. Update Minima Core to see everything.";
