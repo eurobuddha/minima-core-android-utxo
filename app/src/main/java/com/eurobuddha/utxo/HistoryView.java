@@ -45,6 +45,11 @@ public class HistoryView extends BaseView {
     private int shown = SHOW_STEP;              // how many persisted rows are currently rendered
     private static final int AUTO_PAGES_MAX = 5; // extra pages fetched on their own while a send is still "posted"
     private int autoPages = 0;
+    // Loaded NodeTx rows survive between renders (render runs every block while visible), so NodeTx's
+    // per-instance classification caches actually pay off. Invalidated when a page adds rows or the window grows.
+    private List<NodeTx> rowsCache = null;
+    private int rowsCacheShown = -1;
+    private boolean rowsDirty = true;
 
     public HistoryView(MainActivity a) {
         super(a, R.layout.view_history);
@@ -86,7 +91,7 @@ public class HistoryView extends BaseView {
                     JSONObject t = txpows.optJSONObject(i);
                     if (t == null || !t.optBoolean("istransaction", false)) continue;
                     NodeTx n = NodeTx.from(t, details != null && i < details.length() ? details.optJSONObject(i) : null);
-                    if (!n.txpowid.isEmpty()) act.history().upsertNodeTx(n);
+                    if (!n.txpowid.isEmpty() && act.history().upsertNodeTx(n)) rowsDirty = true;
                 }
                 moreAvailable = got >= pageMax && act.history().nodeTxCount() < CAP;
                 // A posted send whose txpow is older than this page: settle it from what is stored, and keep
@@ -127,7 +132,12 @@ public class HistoryView extends BaseView {
         for (HistoryRow r : open) container.addView(localRow(r));
         // Render a bounded window (rows are rebuilt on every block while visible) — "Show more" widens it
         // from the local cache; "Load older" fetches from the node once the cache is exhausted.
-        List<NodeTx> rows = act.history().loadNodeTx(shown);
+        if (rowsDirty || rowsCache == null || rowsCacheShown != shown) {
+            rowsCache = act.history().loadNodeTx(shown);
+            rowsCacheShown = shown;
+            rowsDirty = false;
+        }
+        List<NodeTx> rows = rowsCache;
         int stored = act.history().nodeTxCount();
         if (rows.isEmpty() && open.isEmpty()) {
             TextView empty = new TextView(act);
