@@ -197,6 +197,36 @@ public class HistoryDb extends SQLiteOpenHelper {
         return any;
     }
 
+    /** Re-run the resolver for every open row against the txpows ALREADY stored, so a send whose txpow
+     *  was fetched on an earlier page (or before the row existed) settles without a fresh upsert. */
+    public boolean resolveOpenAgainstStored() {
+        boolean any = false;
+        for (HistoryRow r : listOpen(200)) {
+            if (STATUS_ERROR.equals(r.status)) continue;
+            for (String id : coinIds(r.inputs, "coinid")) {
+                Cursor c = getReadableDatabase().rawQuery(
+                        "SELECT txpowid,inputs,outputs FROM nodetx WHERE inputs LIKE ? LIMIT 1", new String[]{"%" + id + "%"});
+                try {
+                    if (c.moveToFirst()) {
+                        NodeTx n = new NodeTx();
+                        n.txpowid = c.getString(0); n.inputs = c.getString(1); n.outputs = c.getString(2);
+                        any |= resolve(n);
+                        break;
+                    }
+                } finally { c.close(); }
+            }
+        }
+        return any;
+    }
+
+    /** True if any open row is still waiting on the chain (posted / posted?) — drives History's auto-paging. */
+    public boolean hasOpenWaiting() {
+        for (HistoryRow r : listOpen(50)) {
+            if (STATUS_POSTED.equals(r.status) || STATUS_UNKNOWN.equals(r.status)) return true;
+        }
+        return false;
+    }
+
     private static boolean containsIgnoreCase(java.util.Set<String> set, String v) {
         for (String s : set) if (s.equalsIgnoreCase(v)) return true;
         return false;

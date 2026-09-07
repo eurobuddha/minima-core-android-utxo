@@ -43,6 +43,8 @@ public class HistoryView extends BaseView {
     private int lastFetchBlock = -1;
     private boolean moreAvailable = false;
     private int shown = SHOW_STEP;              // how many persisted rows are currently rendered
+    private static final int AUTO_PAGES_MAX = 5; // extra pages fetched on their own while a send is still "posted"
+    private int autoPages = 0;
 
     public HistoryView(MainActivity a) {
         super(a, R.layout.view_history);
@@ -51,7 +53,7 @@ public class HistoryView extends BaseView {
     }
 
     @Override public void refresh() { if (visible() && !fetching) render(); }
-    @Override public void onShown() { render(); fetch(true); }
+    @Override public void onShown() { autoPages = 0; act.history().resolveOpenAgainstStored(); render(); fetch(true); }
     @Override public void onNewBlock() { if (visible()) fetch(false); }
     private boolean visible() { return act.currentTab() == MainActivity.TAB_HISTORY; }
 
@@ -87,6 +89,16 @@ public class HistoryView extends BaseView {
                     if (!n.txpowid.isEmpty()) act.history().upsertNodeTx(n);
                 }
                 moreAvailable = got >= pageMax && act.history().nodeTxCount() < CAP;
+                // A posted send whose txpow is older than this page: settle it from what is stored, and keep
+                // paging (bounded) while something is still waiting — the user shouldn't have to tap
+                // "Load older" to see a confirmed send stop saying "awaiting confirmation".
+                act.history().resolveOpenAgainstStored();
+                if (moreAvailable && autoPages < AUTO_PAGES_MAX && act.history().hasOpenWaiting()) {
+                    autoPages++;
+                    render();
+                    fetchPage(act.history().nodeTxCount());
+                    return;
+                }
                 render();
             }
             @Override public void onError(String message) {
