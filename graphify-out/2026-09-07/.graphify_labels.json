@@ -6,10 +6,10 @@
   "4": ".buildCard",
   "5": "SendView",
   "6": "MainActivity",
-  "7": "WalletTools",
+  "7": ".ReceiveView",
   "8": "ImageLoader",
-  "9": "BaseView",
-  "10": "CoinLoader",
+  "9": "android.view.View",
+  "10": "HistoryDb",
   "11": "utxoWallet — Native Android clone: figma-style mapping & build blueprint",
   "12": ".parse",
   "13": "User instructions — AUTHORITATIVE. These override default behavior and must be followed exactly.",
@@ -20,8 +20,5 @@
   "18": "install.sh",
   "19": "Minima UTXO Wallet (native Android)",
   "20": "pre-commit",
-  "21": "NodeTx",
-  "22": "NodeApi",
-  "23": ".doDistribute",
-  "24": "Cb"
+  "21": "org.json.JSONObject"
 }
