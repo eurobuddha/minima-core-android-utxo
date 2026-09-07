@@ -68,15 +68,29 @@ final class NetFetch {
         return null;   // too many redirects
     }
 
-    /** True for loopback / any-local / link-local / site-local (private) hosts, or anything unresolvable. */
+    /** True for loopback / any-local / link-local / private hosts, or anything unresolvable. Every resolved
+     *  address is checked. Beyond the JDK predicates (isSiteLocalAddress only knows RFC1918 and the dead
+     *  fec0::/10) this also blocks IPv6 unique-local fc00::/7 (today's LAN IPv6), carrier-grade NAT
+     *  100.64.0.0/10 and 0.0.0.0/8. */
     static boolean isBlockedHost(String host) {
         if (host == null || host.isEmpty()) return true;
         try {
             for (InetAddress a : InetAddress.getAllByName(host)) {
-                if (a.isLoopbackAddress() || a.isAnyLocalAddress() || a.isLinkLocalAddress() || a.isSiteLocalAddress())
+                if (a.isLoopbackAddress() || a.isAnyLocalAddress() || a.isLinkLocalAddress() || a.isSiteLocalAddress()
+                        || a.isMulticastAddress() || isExtraPrivate(a))
                     return true;
             }
         } catch (Exception e) { return true; }
+        return false;
+    }
+
+    static boolean isExtraPrivate(InetAddress a) {
+        byte[] b = a.getAddress();
+        if (b.length == 16) return (b[0] & 0xFE) == 0xFC;                        // fc00::/7 unique-local
+        if (b.length == 4) {
+            int o1 = b[0] & 0xFF, o2 = b[1] & 0xFF;
+            return o1 == 0 || (o1 == 100 && o2 >= 64 && o2 <= 127);               // 0.0.0.0/8, 100.64.0.0/10
+        }
         return false;
     }
 }
