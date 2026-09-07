@@ -1,13 +1,13 @@
 {
   "app/build.gradle": {
-    "mtime": 1788464003.5065718,
-    "ast_hash": "28bfdf845dcff3b6f3bc016bc856bca8",
+    "mtime": 1788816914.0272138,
+    "ast_hash": "518759ff0ec05f6ac9d9efa38b9128ee",
     "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/BalancesView.java": {
-    "mtime": 1783341955.7711437,
-    "ast_hash": "3546628580ce0b1ef3cfb8b4866dd101",
-    "semantic_hash": "3546628580ce0b1ef3cfb8b4866dd101"
+    "mtime": 1788699211.1934388,
+    "ast_hash": "d52f64d7c8482408a2227946eb394f24",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/BaseView.java": {
     "mtime": 1783341955.7788222,
@@ -15,29 +15,29 @@
     "semantic_hash": "bd616814d1acbe9d90bf8b80246fd7d6"
   },
   "app/src/main/java/com/eurobuddha/utxo/Coin.java": {
-    "mtime": 1783341955.7684233,
-    "ast_hash": "aba565f0eb59aa49d7dc3ff4419561d2",
-    "semantic_hash": "aba565f0eb59aa49d7dc3ff4419561d2"
+    "mtime": 1788695162.7165117,
+    "ast_hash": "1c3d16ee97e52af00abf8d9f4a938194",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/Design.java": {
-    "mtime": 1783341955.7697496,
-    "ast_hash": "2af9ebec1b5110167f700db278bd670d",
-    "semantic_hash": "2af9ebec1b5110167f700db278bd670d"
+    "mtime": 1788699211.1929555,
+    "ast_hash": "3075b2200d2df12375aaa8057007f64f",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/DistributeJob.java": {
-    "mtime": 1783341955.7852921,
-    "ast_hash": "af8fd6fa149fbb9e138e0c9e5b09d8de",
-    "semantic_hash": "af8fd6fa149fbb9e138e0c9e5b09d8de"
+    "mtime": 1788694953.943075,
+    "ast_hash": "1787ff9c963ebae984c7cf88c1b30fcd",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/DistributeManager.java": {
-    "mtime": 1783341955.781538,
-    "ast_hash": "d8ec388897df029d8dda20ef5ccdac13",
-    "semantic_hash": "d8ec388897df029d8dda20ef5ccdac13"
+    "mtime": 1788695162.7173219,
+    "ast_hash": "bc1db560fb8ea87ef550cdea15dcf78b",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/HistoryDb.java": {
-    "mtime": 1783341955.7857141,
-    "ast_hash": "9f6a891220fc7c22f31972c66f9e2a46",
-    "semantic_hash": "9f6a891220fc7c22f31972c66f9e2a46"
+    "mtime": 1788816801.5848162,
+    "ast_hash": "f6223ed8ad07643105d9915422fe3bf0",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/HistoryRow.java": {
     "mtime": 1783341955.78885,
@@ -45,8 +45,8 @@
     "semantic_hash": "30c2632b75aa26938f6465c32172dfd2"
   },
   "app/src/main/java/com/eurobuddha/utxo/HistoryView.java": {
-    "mtime": 1786003458.9004486,
-    "ast_hash": "a0c0cbb931e52053433e5ba3fda3bb5f",
+    "mtime": 1788816913.978831,
+    "ast_hash": "ac46ec300be438701badc7e0d8140297",
     "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/IconResolver.java": {
@@ -55,44 +55,44 @@
     "semantic_hash": "58caf3693084c81947cf95b3e2dc6b07"
   },
   "app/src/main/java/com/eurobuddha/utxo/Identicon.java": {
-    "mtime": 1783341955.7807026,
-    "ast_hash": "88d02e2c4282e0f97468c6a83873ca26",
-    "semantic_hash": "88d02e2c4282e0f97468c6a83873ca26"
+    "mtime": 1788695162.7139752,
+    "ast_hash": "48900709b8ac289e51423f21b18b8a0a",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/ImageLoader.java": {
-    "mtime": 1783341955.789851,
-    "ast_hash": "a27f3a6c6ae7de9e1564bcfd094718c4",
-    "semantic_hash": "a27f3a6c6ae7de9e1564bcfd094718c4"
+    "mtime": 1788694761.1676447,
+    "ast_hash": "8315c1963b0064b5337564592114b149",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/MainActivity.java": {
-    "mtime": 1786294605.9385543,
-    "ast_hash": "35372b69e39a62c352eda63b0030756c",
+    "mtime": 1788816787.6824355,
+    "ast_hash": "cce393e7ec5120e90f3f09daabbc8696",
     "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/MainPager.java": {
-    "mtime": 1783341955.7895043,
-    "ast_hash": "8e6741e957e6c15028febbd62295d2f8",
-    "semantic_hash": "8e6741e957e6c15028febbd62295d2f8"
+    "mtime": 1788695162.715102,
+    "ast_hash": "ec6b301e917f2d32243bd5395c8a3ce5",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/NodeApi.java": {
-    "mtime": 1786294599.0172858,
-    "ast_hash": "5b2df6708579de3b45e8489e6c2eee90",
+    "mtime": 1788816913.9720373,
+    "ast_hash": "b5c3b55f1642a8930977361487e6b2f1",
     "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/NodeTx.java": {
-    "mtime": 1783526700.6583288,
-    "ast_hash": "f951301683e32f4a448ec50f51425a1b",
-    "semantic_hash": "f951301683e32f4a448ec50f51425a1b"
+    "mtime": 1788816710.2555816,
+    "ast_hash": "808b0ccf4f3451fce7326a261c320d97",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/ReceiveView.java": {
-    "mtime": 1783341955.7903373,
-    "ast_hash": "d6349e75f290467a6370f2e2c17ed343",
-    "semantic_hash": "d6349e75f290467a6370f2e2c17ed343"
+    "mtime": 1788695170.58035,
+    "ast_hash": "0ced1d02950311dcf9fda50546b987b1",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/SendView.java": {
-    "mtime": 1783341955.7881966,
-    "ast_hash": "605593f9a2f03f1ca8e63d5ceda4798c",
-    "semantic_hash": "605593f9a2f03f1ca8e63d5ceda4798c"
+    "mtime": 1788699211.1947503,
+    "ast_hash": "0d01e88c683054623b071afb0782e7f2",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/TokenBalance.java": {
     "mtime": 1783341955.7871597,
@@ -105,34 +105,34 @@
     "semantic_hash": "7a7cea9ba9fa793b61404a406a4642af"
   },
   "app/src/main/java/com/eurobuddha/utxo/TxnBuilder.java": {
-    "mtime": 1783341955.7864974,
-    "ast_hash": "07384f076bfbe5016f3c229e663e368b",
-    "semantic_hash": "07384f076bfbe5016f3c229e663e368b"
+    "mtime": 1788694953.9417515,
+    "ast_hash": "36dabdbccbd197fa594b5e66756b35ce",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/TxnUtil.java": {
-    "mtime": 1783341955.78387,
-    "ast_hash": "dd971b523c8bde78ad4aee9fece95911",
-    "semantic_hash": "dd971b523c8bde78ad4aee9fece95911"
+    "mtime": 1788816719.6295216,
+    "ast_hash": "3e4a0c755abe815789447b1fe94052e2",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/Util.java": {
-    "mtime": 1783341955.7783408,
-    "ast_hash": "bea30c0f2df5df37d0f373c6ac8e7fa5",
-    "semantic_hash": "bea30c0f2df5df37d0f373c6ac8e7fa5"
+    "mtime": 1788695162.714431,
+    "ast_hash": "fe4a453e061fa55bb6003e9a8041ed0e",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/WalletTools.java": {
-    "mtime": 1783341955.783325,
-    "ast_hash": "1e2d8af65d21dcbcacfd0b1a3b70b432",
-    "semantic_hash": "1e2d8af65d21dcbcacfd0b1a3b70b432"
+    "mtime": 1788816719.6300485,
+    "ast_hash": "9d1e086fb5955490007e8378a127ea1f",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/WalletView.java": {
-    "mtime": 1783341955.779511,
-    "ast_hash": "74569e929b53c4bb28e841814692075a",
-    "semantic_hash": "74569e929b53c4bb28e841814692075a"
+    "mtime": 1788701346.9224138,
+    "ast_hash": "6683702aa8fae469643a4cdfad19c5dc",
+    "semantic_hash": ""
   },
   "app/src/main/java/com/eurobuddha/utxo/WebValidate.java": {
-    "mtime": 1783341955.767979,
-    "ast_hash": "7687d83301002552301a95c023e6dbd4",
-    "semantic_hash": "7687d83301002552301a95c023e6dbd4"
+    "mtime": 1788694761.1682744,
+    "ast_hash": "4c62e12b39cc2e2fad5bd94bfdc2145f",
+    "semantic_hash": ""
   },
   "build.gradle": {
     "mtime": 1782212552.0,
@@ -160,8 +160,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1782402086.0603082,
-    "ast_hash": "60bad512cb814c71cc4c6cf1e9d6e190",
+    "mtime": 1788695170.5826817,
+    "ast_hash": "2aaa037f46f1366940ee6e59ddfcf14e",
     "semantic_hash": ""
   },
   "app/src/main/res/drawable-nodpi/minima_coin.png": {
@@ -199,11 +199,6 @@
     "ast_hash": "171bc4320ad34791f91054d5b2835cb7",
     "semantic_hash": ""
   },
-  "app/src/main/res/raw/minima_icon.svg": {
-    "mtime": 1782899815.1718435,
-    "ast_hash": "df87d6ade37210e92ec34cf658a62940",
-    "semantic_hash": ""
-  },
   ".githooks/install.sh": {
     "mtime": 1786883620.6681333,
     "ast_hash": "f31b37c6d1b5d340a5623f1715457ea0",
@@ -212,6 +207,16 @@
   ".githooks/pre-commit": {
     "mtime": 1786883620.6393964,
     "ast_hash": "03526be838d5dd774506cc1f8b47f38c",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/eurobuddha/utxo/CoinLoader.java": {
+    "mtime": 1788816913.97868,
+    "ast_hash": "ef8a963473bff81277db81ca343ec147",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/eurobuddha/utxo/NetFetch.java": {
+    "mtime": 1788816872.9546604,
+    "ast_hash": "bdab9b8960d5fb4560527fe0dfc5d9fb",
     "semantic_hash": ""
   }
 }
