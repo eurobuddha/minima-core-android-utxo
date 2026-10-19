@@ -10,8 +10,8 @@ android {
         applicationId "com.eurobuddha.utxo"
         minSdk 28
         targetSdk 35
-        versionCode 434
-        versionName "0.4.34"
+        versionCode 435
+        versionName "0.4.35"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,7 +41,7 @@ android {
             signingConfig signingConfigs.release
         }
     }
-    testOptions { unitTests.returnDefaultValues = true }
+    testOptions { unitTests.includeAndroidResources = true; unitTests.returnDefaultValues = true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
@@ -49,6 +49,7 @@ android {
 }
 
 dependencies {
+    testImplementation 'org.robolectric:robolectric:4.14.1'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
 

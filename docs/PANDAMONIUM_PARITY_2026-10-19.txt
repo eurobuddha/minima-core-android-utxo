@@ -18,3 +18,19 @@ Certificate SHA-256: eca1383c9d27683a281fbe6355356267877dc2dd14d963d7cc289ca0700
 Candidate: dist/utxo-wallet-0.4.34-candidate.apk
 SHA-256: 7eff7da6cf72ed6a5ad1a5ed8c9c8ffeb75c6417128b334b642f9ffc83a33312
 No installation, publication or live transaction. Fold check remains pending.
+
+UTXO 0.4.35 / code 435: preserve unknown send outcomes
+Reuses NFT Wallet's evidence rule: a live, missing or partial coin snapshot and
+elapsed time cannot prove whether a send was submitted. HistoryDb.reconcileUnknown
+no longer changes transaction status or invents a spent-input explanation. The
+compatibility entrypoint remains for existing refresh callers; settlement continues
+through transaction history. No database migration or live node action.
+Reviewed complete HistoryDb, HistoryRow, callers, canonical adapter and tests.
+Real disposable SQLite regressions cover all-live/missing/partial snapshots and
+restart persistence. Standalone suite: 6 tests; integrated UTXO: 15; all pass.
+Offline signed build passes; lint 0 errors, 105 warnings.
+Candidate: dist/utxo-wallet-0.4.35-candidate.apk
+SHA256: 3da394cd3416e4e4a13394c065dbe23aa4875420c0a157fadbfec47958245ee2
+Package/version and family signing certificate verified. No install/publication.
+Approve this bounded change; full receipt matching and distribution review remain
+open. It does not by itself complete transaction-safety parity.
