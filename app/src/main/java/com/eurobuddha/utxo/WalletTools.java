@@ -204,6 +204,11 @@ public class WalletTools {
                 status.show("Consolidate submitted.", true);
                 act.reload();
             }
+            @Override public void onUnknown(String message) {
+                act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, "Node result unavailable. Outcome unknown.");
+                status.show("Node result unavailable. Outcome unknown. Check History before trying again.", false);
+                act.reload();
+            }
             @Override public void onError(String message) {
                 if (NodeApi.ERR_NOT_ENABLED.equals(message)) message = "Enable this wallet in Minima Core → Apps first.";
                 act.history().update(internalid, HistoryDb.STATUS_ERROR, null, message);
