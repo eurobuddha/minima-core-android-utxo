@@ -341,7 +341,7 @@ public class SendView extends BaseView {
                 act.clearSelection();
                 act.reload();
             }
-        }).onProgress(label -> status(label, true)).run();
+        }).record(internalid).onProgress(label -> status(label, true)).run();
     }
 
     // ----- small helpers -----

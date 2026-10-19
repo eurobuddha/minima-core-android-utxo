@@ -107,7 +107,7 @@ public class WalletTools {
                 act.clearSelection();
                 act.reload();
             }
-        }).run();
+        }).record(internalid).run();
     }
 
     // ---- Split ----
@@ -190,31 +190,26 @@ public class WalletTools {
 
     /** Run the node's native "consolidate" command (it picks its own inputs). */
     private void autoConsolidate(String tokenid) {
+        if (!TxnUtil.canUseNativeFunds(act,tokenid,null)) { status.show(TransactionEvidence.RECORD_FAILED,false);return; }
         final String internalid = TxnUtil.recordPosting(act, "Consolidate " + tokenNameFor(tokenid),
                 "—", tokenid, tokenNameFor(tokenid));
+        if (internalid == null) { status.show(TransactionEvidence.SAVE_FAILED,false);return; }
         status.show("Consolidating…", true);
-        act.node().cmd("consolidate tokenid:" + tokenid, new NodeApi.Cb() {
-            @Override public void onResult(JSONObject json) {
-                // A rejected command (status:false, e.g. nothing to consolidate) arrives via onError.
-                // The node picked the inputs — record them from the reply's txpow so the resolver can
-                // confirm this row later (without them it sat "awaiting confirmation" forever).
-                act.history().update(internalid, HistoryDb.STATUS_POSTED, null, "");
-                String ins = TxnUtil.inputsJsonFromTxpow(json);
-                if (!ins.isEmpty()) act.history().setInputs(internalid, ins);
-                status.show("Consolidate submitted.", true);
-                act.reload();
+        new PreparedConsolidation(act,tokenid,internalid,new TxnBuilder.Done() {
+            @Override public void onPosted(String txpowid,List<TxnBuilder.OutCoin> outputs) {
+                act.history().update(internalid,HistoryDb.STATUS_POSTED,null,"");
+                status.show("Consolidate submitted.",true);act.reload();
+            }
+            @Override public void onFailed(String message) {
+                if(NodeApi.ERR_NOT_ENABLED.equals(message))message="Enable this wallet in Minima Core → Apps first.";
+                act.history().update(internalid,HistoryDb.STATUS_ERROR,null,message);
+                status.show("Failed: "+message,false);
             }
             @Override public void onUnknown(String message) {
-                act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, "Node result unavailable. Outcome unknown.");
-                status.show("Node result unavailable. Outcome unknown. Check History before trying again.", false);
-                act.reload();
+                act.history().update(internalid,HistoryDb.STATUS_UNKNOWN,null,message);
+                status.show(message,false);act.reload();
             }
-            @Override public void onError(String message) {
-                if (NodeApi.ERR_NOT_ENABLED.equals(message)) message = "Enable this wallet in Minima Core → Apps first.";
-                act.history().update(internalid, HistoryDb.STATUS_ERROR, null, message);
-                status.show("Failed: " + message, false);
-            }
-        });
+        }).run();
     }
 
     /** Merge exactly the selected coins into a single coin at a fresh address. */
