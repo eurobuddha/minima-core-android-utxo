@@ -372,7 +372,10 @@ public class WalletView extends BaseView {
         tok.setTypeface(Design.typeface(), Typeface.BOLD);
         tok.setTextSize(9f);
         tok.setTextColor(Design.dim());
-        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        // Match BalancesView's compact names, even for malformed or oversized metadata.
+        tok.setMaxLines(1);
+        tok.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(0, WRAP, 1f);
         tlp.leftMargin = dp(8);
         tok.setLayoutParams(tlp);
         row.addView(tok);
