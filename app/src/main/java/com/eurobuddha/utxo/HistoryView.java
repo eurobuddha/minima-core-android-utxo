@@ -220,7 +220,7 @@ public class HistoryView extends BaseView {
         row.addView(mid);
 
         TextView right = new TextView(act);
-        right.setText("#" + n.block); right.setTextColor(Design.dim()); right.setTextSize(11f); right.setGravity(Gravity.END);
+        right.setText("Saved\n#" + n.block); right.setTextColor(Design.dim()); right.setTextSize(11f); right.setGravity(Gravity.END);
         row.addView(right);
 
         row.setOnClickListener(v -> showDetail(n));
@@ -233,7 +233,7 @@ public class HistoryView extends BaseView {
 
     private static String statusWord(HistoryRow r) {
         switch (r.status == null ? "" : r.status) {
-            case HistoryDb.STATUS_CONFIRMED: return "Confirmed";
+            case HistoryDb.STATUS_CONFIRMED: return "Previously confirmed · open to recheck";
             case HistoryDb.STATUS_POSTING: return "posting…";
             case HistoryDb.STATUS_POSTED:  return "posted · awaiting confirmation";
             case HistoryDb.STATUS_UNKNOWN: return "posted? · node didn't answer";
@@ -248,10 +248,10 @@ public class HistoryView extends BaseView {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(8), dp(11), dp(8), dp(11));
         boolean failed = isFailed(r);
-        int color = failed ? Design.red() : HistoryDb.STATUS_CONFIRMED.equals(r.status) ? 0xFF1EA85A : Design.amber();
+        int color = failed ? Design.red() : Design.amber();
 
         TextView glyph = new TextView(act);
-        glyph.setText(failed ? "✗" : HistoryDb.STATUS_CONFIRMED.equals(r.status) ? "✓" : "⏳"); glyph.setTextColor(color); glyph.setTextSize(18f); glyph.setWidth(dp(28));
+        glyph.setText(failed ? "✗" : "⏳"); glyph.setTextColor(color); glyph.setTextSize(18f); glyph.setWidth(dp(28));
         row.addView(glyph);
 
         LinearLayout mid = new LinearLayout(act);
@@ -284,6 +284,7 @@ public class HistoryView extends BaseView {
         box.setPadding(dp(20), dp(12), dp(20), dp(12));
         box.setBackgroundColor(Design.bg());
         kv(box, "Status", statusWord(r));
+        HistoryChainCheck.show(act,box,r.txnid);
         if (Util.isValidHexId(r.txnid)) copyRow(box, "TxPoW", r.txnid);
         if (r.note != null && !r.note.isEmpty()) kv(box, isFailed(r) ? "Error" : "Note", r.note);
         kv(box, "Amount", "−" + Util.tidyAmount(r.amount) + " " + r.tokenName);
@@ -329,7 +330,8 @@ public class HistoryView extends BaseView {
         box.setBackgroundColor(Design.bg());
         kv(box, "Direction", n.direction);
         kv(box, "Amount", (n.incoming ? "+" : "sent".equals(n.direction) ? "−" : "") + Util.tidyAmount(n.amount) + " " + n.tokenName);
-        kv(box, "Block", String.valueOf(n.block));
+        kv(box, "Recorded block", String.valueOf(n.block));
+        HistoryChainCheck.show(act,box,n.txpowid);
         kv(box, "Time", new SimpleDateFormat("dd MMM yyyy  HH:mm:ss", Locale.ENGLISH).format(new Date(n.timemilli)));
         copyRow(box, "Txpow id", n.txpowid);
         if (!Util.isMinima(n.tokenid)) copyRow(box, "Tokenid", n.tokenid);

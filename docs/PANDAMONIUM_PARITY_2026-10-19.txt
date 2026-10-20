@@ -97,3 +97,38 @@ release review remain OPEN. No settlement or reservation rules changed.
 Verdict: Approve scoped source checkpoint. Not installed or published.
 Candidate:dist/utxo-wallet-0.4.39-candidate.apk
 SHA256:067ea4896d41cde0106779659515a2acee3a50b8b784f4fa32836c47ea15649b
+
+utxo-wallet 0.4.40/code440 — saved-history observation parity (2026-10-20)
+Reused scripts/pandamonium-sources/NFTwallet/HistoryChainCheck.java and the
+history-status adapter's row/detail changes, with the catalog's exact English
+text and existing standalone date formatting. Saved node rows say Saved; opening
+a detail performs a fresh read-only txpow onchain query. Missing/malformed replies
+say Outcome unverified. Typed absence is Not found on this node, not failure.
+An accepted observation includes node-reported depth and a check timestamp.
+
+UTXO retains its existing TransactionEvidence parser, with observedInclusion
+extracted exactly as the donor and the three-block settlement gate preserved.
+Its existing rejection of pending replies remains. NFT has no standalone
+TransactionEvidence/LocalHistory yet: reused only observedInclusion/whole and the
+small ID gate inside HistoryChainCheck; no host journal or private store imported.
+No artificial local-receipt UI was added to NFT. Both display boundaries additionally
+reuse the strict 32-byte block-ID rule from SweepPending and reject pending replies.
+No database mutations, receipt deletion, replay, reservation release or key changes.
+
+Validation: all five applicable view regressions failed before wiring (UTXO3,NFT2).
+Copied helper/parser regressions use actual standalone labels; added pending/short
+block proof cases. UTXO tests explicitly retain depth>=3 settlement while allowing
+valid depth0..2 observations. 180debug+180release tests pass; no failures,
+errors or skips. Signed offline build/lint pass:0errors,111warnings.
+APK package/version, family certificate and ZIP verified. No device/live node used.
+
+Code Review
+Summary: reviewed changed views/helper/parser/configuration and complete tests,
+including callback ownership, fresh checks, exact IDs, numeric consistency,
+malformed/offline cases and unchanged UTXO settlement semantics.
+Findings: no new blocking issue in this read-only display adaptation. A check is a
+timestamped observation from the connected node, not a perpetual confirmation or
+independent chain validation. Broader form/controller/journal parity remains OPEN.
+Verdict: Approve scoped checkpoint. Not installed or published.
+Candidate:dist/utxo-wallet-0.4.40-candidate.apk
+SHA256:060df354f3cde24d597c1145a616444982bbf026ac05bde9b2c1724f8d21012e
