@@ -132,3 +132,51 @@ independent chain validation. Broader form/controller/journal parity remains OPE
 Verdict: Approve scoped checkpoint. Not installed or published.
 Candidate:dist/utxo-wallet-0.4.40-candidate.apk
 SHA256:060df354f3cde24d597c1145a616444982bbf026ac05bde9b2c1724f8d21012e
+
+UTXO Wallet 0.4.41/code441 — Send and tool review parity (2026-10-20)
+Based on standalone c10dc67 (0.4.40), with the donor at d9eb4862 in
+base/build/multilingual-2026-10-16. Reused integrated/utxo SendView review/draft
+helpers, TxnUtil.selectionSnapshot and WalletTools.Review/six controller methods,
+using the canonical send/tool adapter transformations. Included the earlier
+changeGeneration guard from the donor's SendView. No transaction algorithm change.
+
+Retained standalone native dialogs, English strings, IPC and existing journal.
+No Language/UtxoMessages/UtxoText dependency or embedded-node instructions added;
+omitted the host-only Coin.tokenNameProvided metadata. New review warnings use
+the exact donor English catalog text. Coin/token IDs, human/raw amounts, addresses
+and spendability flags are frozen and compared at confirmation/async lookup.
+Repeated or stale confirmations cannot submit; identical refreshes remain valid.
+Late success clears only the matching draft/selection; unknown results preserve
+both and retain the journal's reservations. Old tool statuses cannot replace a
+newer operation; abandoned distribution lookups release their start reservation.
+Untrack uses the accepted frozen IDs with the donor's final syntax gate.
+Delayed change-address replies cannot overwrite edits or a cleared draft.
+
+Validation
+Copied SendDraftReviewTest, ToolReviewTest, ToolDialogReviewTest and
+ToolStatusOwnershipTest (30 cases), adapting only standalone text/Language setup.
+Reused the donor's private-signature updates in UncertainWriteTest and
+NativeReservationGuardTest, preserving their existing assertions. Added four
+real-form change-address race tests to the existing SendDraftReview fixture.
+Before production changes:12 of13 Send/native-dialog cases failed on behavior
+assertions (no missing-class/signature errors in this baseline). After repair:
+214debug+214release tests pass, zero failures/errors/skips. Original donor's
+30 relevant tests also pass. All transport/signing uses mocks/public fixtures.
+Offline signed assembly and lint pass:0errors,111warnings (unchanged).
+Package com.eurobuddha.utxo,versionCode441,versionName0.4.41 verified in APK.
+ZIP integrity and family signing certificate verified:
+eca1383c9d27683a281fbe6355356267877dc2dd14d963d7cc289ca0700e517f.
+
+Code Review
+Summary: reviewed all changed production/test/configuration files, donor adapters,
+MainActivity selection/lifecycle, Coin validation, TxnBuilder admission and
+DistributeManager reservation/frozen-input paths. Existing journal admission,
+receipt handling and settlement rules remain in place. UI ownership guards operate
+before building and preserve financial history effects on later callbacks.
+Findings: no blocking issue in this scoped parity port. The snapshot is a review
+consistency check, not a substitute for the journal or fresh node validation.
+Verdict: Approve scoped source checkpoint. Full app/comparison queue remains open;
+this is not an assertion that all companion parity work is complete.
+Candidate:dist/utxo-wallet-0.4.41-candidate.apk
+SHA256:6019fa52adbcbd4245360380edf8309d1efb3453697098baaaccd4fb8aa68e8d
+Bytes:12843577. Not installed or published; no live node transaction used.

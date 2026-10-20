@@ -28,10 +28,60 @@ public class WalletTools {
 
     private final MainActivity act;
     private final Status status;
+    private long statusGeneration;
 
     public WalletTools(MainActivity act, Status status) {
         this.act = act;
         this.status = status;
+    }
+
+    /** Reuse SendView's literal selection comparison across confirmation and async lookup. */
+    private final class Review {
+        final List<Coin> coins = new ArrayList<>();
+        final String[] snapshot;
+        final String tokenid;
+        private boolean accepted;
+        private long statusOwner = -1;
+        private void claimStatus() { if (statusOwner < 0) statusOwner = ++statusGeneration; }
+        final Status status = (message, ok) -> {
+            claimStatus();
+            if (statusOwner == statusGeneration && !act.isFinishing() && !act.isDestroyed())
+                WalletTools.this.status.show(message, ok);
+        };
+        Review() {
+            List<Coin> selected = act.selectedCoins();
+            snapshot = TxnUtil.selectionSnapshot(selected);
+            for (Coin source : selected) {
+                if (source == null) { coins.add(null); continue; }
+                // Freeze the command and display fields; these tools do not replay NFT state.
+                Coin c = new Coin();
+                c.coinid=source.coinid;c.tokenid=source.tokenid;c.amount=source.amount;c.rawAmount=source.rawAmount;
+                c.address=source.address;c.miniaddress=source.miniaddress;
+                c.confirmed=source.confirmed;c.sendable=source.sendable;c.spent=source.spent;
+                c.tokenName=source.tokenName;
+                coins.add(c);
+            }
+            tokenid=coins.isEmpty()?Util.MINIMA_TOKENID:coins.get(0)==null?null:coins.get(0).tokenid;
+        }
+        boolean accept(boolean spend) {
+            if (accepted) return false;
+            accepted=true;
+            claimStatus();
+            return current(spend);
+        }
+        boolean current(boolean spend) {
+            if (act.isFinishing() || act.isDestroyed()) return false;
+            boolean valid=Util.isValidHexId(tokenid);
+            java.util.Set<String> ids=new java.util.HashSet<>();
+            for (Coin c:coins) {
+                if (c==null || !Util.isValidHexId(c.coinid) || !TransactionFields.same(tokenid,c.tokenid)
+                        || !ids.add(c.coinid.toLowerCase(java.util.Locale.ROOT))
+                        || (spend && (!c.isWellFormed() || !c.confirmed || !c.sendable || c.spent))) {valid=false;break;}
+            }
+            if (valid && java.util.Arrays.equals(snapshot,TxnUtil.selectionSnapshot(act.selectedCoins()))) return true;
+            status.show("Selected coins changed or are unavailable. Review the selection and try again.",false);
+            return false;
+        }
     }
 
     // ---- shared helpers ----
@@ -85,7 +135,8 @@ public class WalletTools {
 
     /** Post a custom transaction via {@link TxnBuilder} and reflect the outcome on the history row. */
     private void runBuilder(List<Coin> inputs, List<TxnBuilder.Out> outs, String tokenid,
-                            String internalid, String okLabel) {
+                            String internalid, String okLabel, final Status status) {
+        final String[] submittedCoins=TxnUtil.selectionSnapshot(inputs);
         status.show("Posting…", true);
         new TxnBuilder(act, inputs, outs, tokenid, new TxnBuilder.Done() {
             @Override public void onPosted(String txpowid, List<TxnBuilder.OutCoin> outputs) {
@@ -93,7 +144,7 @@ public class WalletTools {
                 // the real txpowid via the stored input coinids and marks it confirmed.
                 act.history().update(internalid, HistoryDb.STATUS_POSTED, null, "");
                 status.show(okLabel + " — sent!", true);
-                act.clearSelection();
+                if(java.util.Arrays.equals(submittedCoins,TxnUtil.selectionSnapshot(act.selectedCoins()))) act.clearSelection();
                 act.reload();
             }
             @Override public void onFailed(String message) {
@@ -102,9 +153,8 @@ public class WalletTools {
                 status.show("Failed: " + message, false);
             }
             @Override public void onUnknown(String message) {
-                act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, "node reply timed out — awaiting settlement");
-                status.show(okLabel + " — no reply from the node in time; it may still have posted. See 'posted?' in History.", false);
-                act.clearSelection();
+                act.history().update(internalid, HistoryDb.STATUS_UNKNOWN, null, message);
+                status.show(message, false);
                 act.reload();
             }
         }).record(internalid).run();
@@ -114,24 +164,29 @@ public class WalletTools {
 
     /** Prompt for a coin count, then split the selected coins into that many equal coins. */
     public void showSplit() {
-        final List<Coin> sel = act.selectedCoins();
+        final Review review = new Review();
+        final Status status = review.status;
+        final List<Coin> sel = review.coins;
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Split.", false); return; }
         final EditText count = input("Number of coins (2–15)", "4", false);
         Design.dialog(act)
                 .setTitle("Split selected coins")
                 .setView(box(count))
-                .setPositiveButton("Split", (d, w) -> doSplit(sel, count.getText().toString()))
+                .setPositiveButton("Split", (d, w) -> doSplit(review, count.getText().toString()))
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
     /** Validate the count, compute equal slices, fetch one address per coin, then post the split. */
-    private void doSplit(List<Coin> sel, String cStr) {
+    private void doSplit(Review review, String cStr) {
+        final Status status = review.status;
+        if (!review.accept(true)) return;
+        final List<Coin> sel = review.coins;
         int n;
         try { n = Integer.parseInt(cStr.trim()); } catch (Exception e) { status.show("Enter a valid number.", false); return; }
         if (n < 2 || n > 15) { status.show("Choose between 2 and 15 coins.", false); return; }
 
-        final String tokenid = act.selectedTokenid();
+        final String tokenid = review.tokenid;
         int dec = act.tokenDecimals(tokenid);
         int scale = dec >= 0 ? dec : SPLIT_SCALE;
         BigDecimal total = sum(sel);
@@ -146,6 +201,7 @@ public class WalletTools {
         status.show("Fetching addresses…", true);
         TxnUtil.fetchAddresses(act, n, new TxnUtil.AddrList() {
             @Override public void onAddresses(List<String> addrs) {
+                if (!review.current(true)) return;
                 List<TxnBuilder.Out> outs = new ArrayList<>();
                 for (int i = 0; i < fn; i++) {
                     BigDecimal amt = (i == fn - 1) ? last : eachF;
@@ -153,7 +209,7 @@ public class WalletTools {
                 }
                 String internalid = TxnUtil.recordPosting(act, "Split → " + fn + " coins",
                         Util.tidyAmount(sum(sel).toPlainString()), tokenid, tokenName, sel, outs, null, null);
-                runBuilder(sel, outs, tokenid, internalid, "Split into " + fn + " coins");
+                runBuilder(sel, outs, tokenid, internalid, "Split into " + fn + " coins", status);
             }
             @Override public void onError(String message) { status.show("Failed: " + message, false); }
         });
@@ -165,12 +221,14 @@ public class WalletTools {
 
     /** Entry point: no selection ⇒ node auto-consolidate Minima; 2+ selected ⇒ merge exactly those. */
     public void showConsolidate() {
-        final List<Coin> sel = act.selectedCoins();
+        final Review review = new Review();
+        final Status status = review.status;
+        final List<Coin> sel = review.coins;
         if (sel.isEmpty()) {
             Design.dialog(act)
                     .setTitle("Consolidate Minima")
                     .setMessage("Merge your Minima coins together automatically (consolidate tokenid:0x00)?")
-                    .setPositiveButton("Consolidate", (d, w) -> autoConsolidate(Util.MINIMA_TOKENID))
+                    .setPositiveButton("Consolidate", (d, w) -> { if(review.accept(false)) autoConsolidate(Util.MINIMA_TOKENID, status); })
                     .setNegativeButton("Cancel", null)
                     .show();
             return;
@@ -183,13 +241,13 @@ public class WalletTools {
         Design.dialog(act)
                 .setTitle("Consolidate selected")
                 .setMessage("Merge the " + sel.size() + " selected " + tokenName + " coins into one?")
-                .setPositiveButton("Merge", (d, w) -> mergeSelected(sel))
+                .setPositiveButton("Merge", (d, w) -> mergeSelected(review))
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
     /** Run the node's native "consolidate" command (it picks its own inputs). */
-    private void autoConsolidate(String tokenid) {
+    private void autoConsolidate(String tokenid, final Status status) {
         if (!TxnUtil.canUseNativeFunds(act,tokenid,null)) { status.show(TransactionEvidence.RECORD_FAILED,false);return; }
         final String internalid = TxnUtil.recordPosting(act, "Consolidate " + tokenNameFor(tokenid),
                 "—", tokenid, tokenNameFor(tokenid));
@@ -203,7 +261,7 @@ public class WalletTools {
             @Override public void onFailed(String message) {
                 if(NodeApi.ERR_NOT_ENABLED.equals(message))message="Enable this wallet in Minima Core → Apps first.";
                 act.history().update(internalid,HistoryDb.STATUS_ERROR,null,message);
-                status.show("Failed: "+message,false);
+                status.show("Failed: " + message,false);
             }
             @Override public void onUnknown(String message) {
                 act.history().update(internalid,HistoryDb.STATUS_UNKNOWN,null,message);
@@ -213,13 +271,17 @@ public class WalletTools {
     }
 
     /** Merge exactly the selected coins into a single coin at a fresh address. */
-    private void mergeSelected(final List<Coin> sel) {
-        final String tokenid = act.selectedTokenid();
+    private void mergeSelected(Review review) {
+        final Status status = review.status;
+        if (!review.accept(true)) return;
+        final List<Coin> sel = review.coins;
+        final String tokenid = review.tokenid;
         final String tokenName = sel.get(0).tokenName;
         final BigDecimal total = sum(sel);
         status.show("Fetching address…", true);
         act.node().cmd("getaddress", new NodeApi.Cb() {
             @Override public void onResult(JSONObject json) {
+                if (!review.current(true)) return;
                 JSONObject r = json.optJSONObject("response");
                 String addr = r == null ? "" : r.optString("miniaddress", r.optString("address", ""));
                 if (addr.isEmpty()) { status.show("Could not get an address.", false); return; }
@@ -227,7 +289,7 @@ public class WalletTools {
                 outs.add(new TxnBuilder.Out(addr, total.stripTrailingZeros().toPlainString()));
                 String internalid = TxnUtil.recordPosting(act, "Consolidate → 1 coin",
                         Util.tidyAmount(total.toPlainString()), tokenid, tokenName, sel, outs, null, null);
-                runBuilder(sel, outs, tokenid, internalid, "Merged " + sel.size() + " coins");
+                runBuilder(sel, outs, tokenid, internalid, "Merged " + sel.size() + " coins", status);
             }
             @Override public void onError(String message) { status.show("Failed: " + message, false); }
         });
@@ -237,7 +299,9 @@ public class WalletTools {
 
     /** Prompt for address count + per-address amount, then kick off the multi-batch DistributeManager. */
     public void showDistribute() {
-        final List<Coin> sel = act.selectedCoins();
+        final Review review = new Review();
+        final Status status = review.status;
+        final List<Coin> sel = review.coins;
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Distribute.", false); return; }
         if (act.distribute() != null && act.distribute().isBusy()) {
             status.show("A distribute job is already running.", false); return;
@@ -248,13 +312,16 @@ public class WalletTools {
                 .setTitle("Distribute to my addresses")
                 .setView(box(count, amount))
                 .setPositiveButton("Distribute", (d, w) ->
-                        doDistribute(sel, count.getText().toString(), amount.getText().toString()))
+                        doDistribute(review, count.getText().toString(), amount.getText().toString()))
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
     /** Validate count/amount/decimals/funds, reserve the job slot, fetch addresses, then start. */
-    private void doDistribute(final List<Coin> sel, String cStr, String aStr) {
+    private void doDistribute(Review review, String cStr, String aStr) {
+        final Status status = review.status;
+        if (!review.accept(true)) return;
+        final List<Coin> sel = review.coins;
         int n;
         try { n = Integer.parseInt(cStr.trim()); } catch (Exception e) { status.show("Enter a valid number.", false); return; }
         if (n < 2 || n > 56) { status.show("Choose 2–56 addresses (auto-chained in up to 4 transactions).", false); return; }
@@ -263,7 +330,7 @@ public class WalletTools {
         try { per = new BigDecimal(aStr.trim()); } catch (Exception e) { status.show("Enter a valid amount.", false); return; }
         if (per.signum() <= 0) { status.show("Amount must be greater than zero.", false); return; }
 
-        final String tokenid = act.selectedTokenid();
+        final String tokenid = review.tokenid;
         int dec = act.tokenDecimals(tokenid);
         if (dec >= 0 && Util.decimalPlaces(per) > dec) {
             status.show("This token supports at most " + dec + " decimal place" + (dec == 1 ? "" : "s") + ".", false);
@@ -273,8 +340,7 @@ public class WalletTools {
         BigDecimal total = sum(sel);
         BigDecimal required = per.multiply(new BigDecimal(n));
         if (required.compareTo(total) > 0) {
-            status.show("Need " + Util.tidyAmount(required.toPlainString()) + " but only "
-                    + Util.tidyAmount(total.toPlainString()) + " selected.", false);
+            status.show("Need " + Util.tidyAmount(required.toPlainString()) + " but only " + Util.tidyAmount(total.toPlainString()) + " selected.", false);
             return;
         }
         final String perStr = per.stripTrailingZeros().toPlainString();
@@ -285,6 +351,7 @@ public class WalletTools {
         status.show("Fetching " + n + " addresses…", true);
         TxnUtil.fetchAddresses(act, n, new TxnUtil.AddrList() {
             @Override public void onAddresses(List<String> addrs) {
+                if (!review.current(true)) { act.distribute().cancelReserve(); return; }
                 act.distribute().start(sel, addrs, perStr, tokenid, tokenName);
                 status.show("Distribute started.", true);
             }
@@ -299,28 +366,33 @@ public class WalletTools {
 
     /** Confirm, then stop tracking the selected coins (they stay on-chain, just hidden locally). */
     public void untrackSelected() {
-        final List<Coin> sel = act.selectedCoins();
+        final Review review = new Review();
+        final Status status = review.status;
+        final List<Coin> sel = review.coins;
         if (sel.isEmpty()) { status.show("Select coins in the list first, then Untrack.", false); return; }
         Design.dialog(act)
                 .setTitle("Untrack " + sel.size() + " coin(s)?")
                 .setMessage("They'll disappear from the wallet view but remain on-chain. Re-add later by coinid.")
-                .setPositiveButton("Untrack", (d, w) -> untrackNext(sel, 0))
+                .setPositiveButton("Untrack", (d, w) -> { if(review.accept(false)) untrackNext(sel, 0, status); })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
     // Untrack one coin at a time, recursing on success — the node has no batch cointrack call.
     /** Sequentially `cointrack enable:false` each selected coin, recursing through the list. */
-    private void untrackNext(final List<Coin> sel, final int i) {
+    private void untrackNext(final List<Coin> sel, final int i, final Status status) {
         if (i >= sel.size()) {
             status.show("Untracked " + sel.size() + " coin(s).", true);
-            act.clearSelection();
+            if(java.util.Arrays.equals(TxnUtil.selectionSnapshot(sel),TxnUtil.selectionSnapshot(act.selectedCoins()))) act.clearSelection();
             act.reload();
             return;
         }
         status.show("Untracking " + (i + 1) + "/" + sel.size() + "…", true);
+        // Belt-and-braces: coins are already vetted at ingestion (Coin.isWellFormed), but this id
+        // goes straight into a command, so never take that on trust.
+        if (!Util.isValidHexId(sel.get(i).coinid)) { untrackNext(sel, i + 1, status); return; }
         act.node().cmd("cointrack enable:false coinid:" + sel.get(i).coinid, new NodeApi.Cb() {
-            @Override public void onResult(JSONObject json) { untrackNext(sel, i + 1); }
+            @Override public void onResult(JSONObject json) { untrackNext(sel, i + 1, status); }
             @Override public void onError(String message) {
                 if (NodeApi.ERR_NOT_ENABLED.equals(message)) message = "Enable this wallet in Minima Core → Apps first.";
                 status.show("Untrack failed: " + message, false);
