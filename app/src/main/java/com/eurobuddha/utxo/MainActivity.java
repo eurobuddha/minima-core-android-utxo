@@ -37,7 +37,6 @@ import java.util.Set;
  */
 public class MainActivity extends AppCompatActivity {
 
-    public static final String NODE_PKG = "com.eurobuddha.minimacore";
 
     public static final int TAB_WALLET = 0, TAB_BALANCES = 1, TAB_RECEIVE = 2,
             TAB_SEND = 3, TAB_HISTORY = 4;
@@ -192,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceive(Context c, Intent intent) {
                 if (!MinimaAPI.checkMinimaID(MainActivity.this, intent)) return;
-                String data = intent.getStringExtra(MinimaAPIMessages.MINIMA_API_NOTIFY_DATA);
+                String data = MinimaAPI.notifyData(intent);
                 if (data == null) return;
                 try {
                     String event = new org.json.JSONObject(data).optString("event", "");
@@ -204,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         ContextCompat.registerReceiver(this, notifyReceiver,
-                new IntentFilter(MinimaAPIMessages.MINIMA_API_NOTIFY), ContextCompat.RECEIVER_EXPORTED);
+                MinimaAPI.notifyFilter(), ContextCompat.RECEIVER_EXPORTED);
 
         // Resumes any persisted multi-batch Distribute job.
         distribute = new DistributeManager(this);
@@ -437,9 +436,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void openMinimaCore() {
-        Intent launch = getPackageManager().getLaunchIntentForPackage(NODE_PKG);
-        if (launch == null) launch = getPackageManager().getLaunchIntentForPackage("com.eurobuddha.minimablock");
-        if (launch == null) launch = getPackageManager().getLaunchIntentForPackage("com.eurobuddha.pandamonium");
+        Intent launch = MinimaAPI.launchNode(this);
         if (launch != null) startActivity(launch);
         else Toast.makeText(this, "Minima Core is not installed.", Toast.LENGTH_LONG).show();
     }
